@@ -1144,18 +1144,18 @@ typedef struct Instruction_info
 
     uint16_t flags;          // flags de la instruccion
     uint8_t  flags_prefix;   // flags que indica prefijos de la instrucccion:
-    #define FLAG_PREFIX_Prefix_addr_size (1 << 1)
+    #define FLAG_PREFIX_Prefix_addr_size (1 << 0)
 } Instruction_info;
 
 #pragma pack(pop)
 
 // (Instrucciones en page: 2845/2875) Intel® 64 and IA-32 Architectures Software Developer’s Manual, Combined Volumes: 1, 2A, 2B, 2C, 2D, 3A, 3B,
 
-#define MOD_RM_REG_MASK  (1 << 1)
-#define DISP_LOW_MASK    (1 << 2)
-#define DISP_HIGH_MASK   (1 << 3)
-#define DATA_MASK_8086   (1 << 4)
-#define DATA_MASK_8086_w (1 << 5)
+#define MOD_RM_REG_MASK  (1 << 0)
+#define DISP_LOW_MASK    (1 << 1)
+#define DISP_HIGH_MASK   (1 << 2)
+#define DATA_MASK_8086   (1 << 3)
+#define DATA_MASK_8086_w (1 << 4)
 /*
  * El 8086 dispone de un byte de opcode maximo, donde se encuentra el Bit D y el bit W normalmente
  * El segundo byte suele codificar Mod/RM

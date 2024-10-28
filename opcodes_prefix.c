@@ -54,7 +54,8 @@ int dissamble(uint8_t* code, uint8_t* code_final, size_t* position, Instruction_
         *((uint8_t*)&(instruction->Mod_rm)) = *(code + *position);
         *position += 1;
     }
-    if ((instruction->flags & DISP_LOW_MASK) & (instruction->flags & DISP_HIGH_MASK)){
+    if (
+        (instruction->flags & DISP_LOW_MASK) && (instruction->flags & DISP_HIGH_MASK)){
         instruction->displacement.ui16 = *(uint16_t*)(code + *position); // desplazamiento bajo y alto
         *position += 2;
     }
