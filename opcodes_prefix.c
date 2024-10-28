@@ -35,8 +35,8 @@
 #include "opcodes_prefix.h"
 
 int dissamble(uint8_t* code, uint8_t* code_final, size_t* position, Instruction_info* instruction, encoder_x86 encode){
-    uint8_t *ptr_code = code + *position;
-    uint8_t byte = *ptr_code;
+    //uint8_t *ptr_code = code + *position;
+    uint8_t byte = code + *position;
     switch (byte)
     {
         case Prefix_addr_size: 
@@ -49,15 +49,19 @@ int dissamble(uint8_t* code, uint8_t* code_final, size_t* position, Instruction_
     instruction->flags = my_instruccion_8086[*(code + *position)];
     instruction->opcode1.opcode_byte.byte = *(code + *position);
     *position += 1;
-
+    byte = code + *position;
     if (instruction->flags & MOD_RM_REG_MASK){
         *((uint8_t*)&(instruction->Mod_rm)) = *(code + *position);
-        *position += 1;
     }
-    if (
+    if ( 
         (instruction->flags & DISP_LOW_MASK) && (instruction->flags & DISP_HIGH_MASK)){
-        instruction->displacement.ui16 = *(uint16_t*)(code + *position); // desplazamiento bajo y alto
-        *position += 2;
+            if(instruction->flags_prefix & FLAG_PREFIX_Prefix_addr_size){
+                instruction->displacement.ui16 = *(uint16_t*)(code + *position) ; // desplazamiento bajo y alto
+                *position += 2;
+            } else {
+                instruction->displacement.ui8 = *(uint8_t*)(code + *position) ; // desplazamiento bajo y alto
+                *position += 1;
+            }
     }
 
     return ((code+*position)  < code_final) ? 1 : 0; // mientras no se llegue al final queda por desensamblar
