@@ -48,7 +48,6 @@
  */
 #include <stdint.h>
 
-#include "format_opcode_macros.h"
 #include "debug_c.h"
 
 typedef enum string_instrution_id {
@@ -1098,15 +1097,6 @@ typedef struct SIB {
  * Entre otros cambios, la ampliación de estos valores de tres bits a cuatro duplica el número 
  * de registros disponibles en el procesador de ocho a dieciséis.
  */
-typedef struct Instruction {
-    uint8_t prefix[4];  // ? // 4
-    opcode  opcode[3];       // 7
-    Mod_rm  Mod_rm;          // 8
-    SIB     SIB;             // 9
-    uint8_t displacement[4]; // desplazamiento de 0, 1, 2, 4 bytes
-    uint8_t immediate[4];    // immediato de 0, 1, 2, 4 bytes
-} Instruction;
-
 /*
  *
  * El campo TTTN definen la condicion de la instruccion, en el caso de las instrucciones JCC (instrucciones de salto)
@@ -1136,33 +1126,74 @@ typedef struct Instruction {
  * |-----------------------------------------------------------|  
  */
 
-union data
+typedef union data
 {
     uint8_t  ui8;
     uint16_t ui16;
     uint32_t ui32;
     uint64_t ui64;
-    void*    func;
 } data;
 
 typedef struct Instruction_info
 {
-    Instruction instruction;
-    
-    uint8_t position_tttn:2;  
-    uint8_t mask_rm;   
-    uint8_t mask_reg;  
-    uint8_t mask_mod;  
-    
-    data immediate_data; 
-    data immediate_instrution; 
+    opcode  opcode1;         // 7
+    Mod_rm  Mod_rm;          // 8
+    SIB     SIB;             // 9
+    data    displacement;   // desplazamiento de 0, 1, 2, 4 bytes
+    data    immediate;    // immediato de 0, 1, 2, 4 bytes
+
+    uint16_t flags;          // flags de la instruccion
+    uint8_t  flags_prefix;   // flags que indica prefijos de la instrucccion:
+    #define FLAG_PREFIX_Prefix_addr_size (1 << 1)
 } Instruction_info;
 
 #pragma pack(pop)
 
 // (Instrucciones en page: 2845/2875) Intel® 64 and IA-32 Architectures Software Developer’s Manual, Combined Volumes: 1, 2A, 2B, 2C, 2D, 3A, 3B,
 
-__attribute__((__section__(".instruccion"))) static Instruction_info my_instruccion[] = {
+#define MOD_RM_REG_MASK  (1 << 1)
+#define DISP_LOW_MASK    (1 << 2)
+#define DISP_HIGH_MASK   (1 << 3)
+#define DATA_MASK_8086   (1 << 4)
+#define DATA_MASK_8086_w (1 << 5)
+/*
+ * El 8086 dispone de un byte de opcode maximo, donde se encuentra el Bit D y el bit W normalmente
+ * El segundo byte suele codificar Mod/RM
+ *      - mod(00, memoria, no desplazamiento)
+ *      - mod(01, memoria, desplazamiento de 8bits)
+ *      - mod(10, memoria, desplazamiento de 16bits)
+ *      - mod(11, modo registro, no desplazamiento)
+ *           *excepto R/M = 110, que codifica un desplazamiento de 16 bits
+ * 
+ * el tercer byte codifica un desplazamiento bajo o datos
+ * el cuarto byte codifica direcciones altas o datos
+ * el quito byte codifica un dato bajo
+ * el sexto byte codifica un dato alto
+ * maximo 6 bytes por instruccion.
+ */
+
+__attribute__((__section__(".instruccion"))) static uint8_t my_instruccion_8086[] = {
+    [0b00000000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(00 -> 0b00000000) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00000001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(01 -> 0b00000001) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00000010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(02 -> 0b00000010) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00000011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+
+    [0b00000100] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(04 -> 0b00000100) -> (add) (data), (data if w = 1)
+    [0b00000101] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(05 -> 0b00000101) -> (add) (data), (data if w = 1)
+
+    [0b10000000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(80 -> 0b10000000) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    [0b10000001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(81 -> 0b10000001) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    [0b10000010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(82 -> 0b10000010) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    [0b10000011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(83 -> 0b10000011) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+
+    [0b00010000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(00 -> 0b00000000) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00010001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(01 -> 0b00000001) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00010010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(02 -> 0b00000010) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00010011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(03 -> 0b00000011) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
+
+    [0b00010100] = DISP_HIGH_MASK | DATA_MASK_8086,                  // opcode(04 -> 0b00010100)  -> (add) (data), (data if w = 1)
+    [0b00010101] = DISP_HIGH_MASK | DATA_MASK_8086,                  // opcode(04 -> 0b00010101)  -> (add) (data), (data if w = 1)
+
 };
 
 typedef enum Prefix_x86_Segment_Register {
@@ -1209,6 +1240,8 @@ typedef enum Prefix_x86_others {
  *      - A11 y A12 = contienen mapas para los opcodes de las instrucciones de escape que comienzan por 0xDA (pagina: 2860)
  * 
  */
+int dissamble(uint8_t* code, uint8_t* code_final, size_t* position, Instruction_info* instruction, encoder_x86 encode);
+void print_Instruction_info(Instruction_info* instruction, encoder_x86 encode);
 
 
 #include "opcodes_prefix.c"

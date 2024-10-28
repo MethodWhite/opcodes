@@ -35,9 +35,9 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "stringx.h"
-#include "instrutions_format.h"
-#include "opcodes_prefix.h"
+//#include "stringx.h"
+//#include "instrutions_format.h"
+//#include "opcodes_prefix.h"
 #include "colors.h"
 
 #define WORD_SIZE 256
@@ -46,12 +46,12 @@
 
 char *get_addr_to_encoder_x86(uint64_t addr, encoder_x86 encoder_val);
 
-void print_instruccion_binary(Instruction *my_instruccion);
-void print_binary(unsigned int num, uint16_t num_bits, uint16_t init_count);
-void print_instruccion_hex(Instruction *my_instruccion, encoder_x86 encoder_val);
-void print_instruccion(Instruction_info *my_instruccion, encoder_x86 encoder_val);
-void print_opcode(Instruction_info *my_instruccion_, opcode opcode, uint8_t number_opcode);
-void print_table_hex(char *string_init, char *string_text_for_printing, size_t size_string_text_for_printing, encoder_x86 encoder_val);
+// void print_instruccion_binary(Instruction *my_instruccion);
+// void print_binary(unsigned int num, uint16_t num_bits, uint16_t init_count);
+// void print_instruccion_hex(Instruction *my_instruccion, encoder_x86 encoder_val);
+// void print_instruccion(Instruction_info *my_instruccion, encoder_x86 encoder_val);
+// void print_opcode(Instruction_info *my_instruccion_, opcode opcode, uint8_t number_opcode);
+// void print_table_hex(char *string_init, char *string_text_for_printing, size_t size_string_text_for_printing, encoder_x86 encoder_val);
 
 #include "print_structs_format.c"
 #endif
