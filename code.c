@@ -157,15 +157,15 @@ int main(){
 
     };
     char text1[] = " ";
-    print_table_hex(text1, (char*)instrucciones1, sizeof(instrucciones1), ENCODER_IN_16bits);
-    List_instrution *instrutions_struct = format_instruccion(instrucciones1, sizeof(instrucciones1) -1, ENCODER_IN_16bits);
-    String_list_link *string_asm = get_string_instruction_assembly(instrutions_struct, ENCODER_IN_16bits);
-    String_list_link *string_asm_join = join_list_to_String(string_asm, "\n");
-    free_String_list_link(string_asm);
-    print_String_list_link(string_asm_join);
-    free_String_list_link(string_asm_join);
+    //print_table_hex(text1, (char*)instrucciones1, sizeof(instrucciones1), ENCODER_IN_16bits);
+    //List_instrution *instrutions_struct = format_instruccion(instrucciones1, sizeof(instrucciones1) -1, ENCODER_IN_16bits);
+    //String_list_link *string_asm = get_string_instruction_assembly(instrutions_struct, ENCODER_IN_16bits);
+    //String_list_link *string_asm_join = join_list_to_String(string_asm, "\n");
+    //free_String_list_link(string_asm);
+    //print_String_list_link(string_asm_join);
+    //free_String_list_link(string_asm_join);
     //instrutions_struct1 = pop_List_instrution(instrutions_struct,2);
-    print_List_instrution(instrutions_struct, ENCODER_IN_16bits);
+    //print_List_instrution(instrutions_struct, ENCODER_IN_16bits);
     //size_t number_of_instrutions = get_number_instrutions(instrucciones1, sizeof(instrucciones1));
     
    uint8_t instrucciones[] = {
@@ -291,18 +291,18 @@ int main(){
     // tal vez mañana solo dios.
 
     
-    print_table_hex(text, (char*)instrucciones, sizeof(instrucciones), ENCODER_IN_32bits);
-    List_instrution *instrutions_struct32bits = format_instruccion(instrucciones, sizeof(instrucciones)-1, ENCODER_IN_32bits);
-    String_list_link *string_asm32bits = get_string_instruction_assembly(instrutions_struct32bits, ENCODER_IN_32bits);
-    String_list_link *string_asm_join32bits = join_list_to_String(string_asm32bits, "\n");
-    free_String_list_link(string_asm32bits);
-    print_String_list_link(string_asm_join32bits);
-    free_String_list_link(string_asm_join32bits);
+    //print_table_hex(text, (char*)instrucciones, sizeof(instrucciones), ENCODER_IN_32bits);
+    //List_instrution *instrutions_struct32bits = format_instruccion(instrucciones, sizeof(instrucciones)-1, ENCODER_IN_32bits);
+    //String_list_link *string_asm32bits = get_string_instruction_assembly(instrutions_struct32bits, ENCODER_IN_32bits);
+    //String_list_link *string_asm_join32bits = join_list_to_String(string_asm32bits, "\n");
+    //free_String_list_link(string_asm32bits);
+    //print_String_list_link(string_asm_join32bits);
+    //free_String_list_link(string_asm_join32bits);
     //instrutions_struct32bits = pop_List_instrution(instrutions_struct32bits,2);
-    print_List_instrution(instrutions_struct32bits, ENCODER_IN_32bits);
+    //print_List_instrution(instrutions_struct32bits, ENCODER_IN_32bits);
     //size_t number_of_instrutions = get_number_instrutions(instrucciones, sizeof(instrucciones));
 
-    printf("Numero de instrucciones descodificadas: %zu\n", get_number_instrutions(instrutions_struct32bits));
+    //printf("Numero de instrucciones descodificadas: %zu\n", get_number_instrutions(instrutions_struct32bits));
 
     puts("Exit...");
     
