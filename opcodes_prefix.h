@@ -940,68 +940,75 @@ typedef union opcode // estructura para representar los opcodes
 } opcode;                   
 
 typedef struct Mod_rm { // estructura para representar el mod/rm (¿Register/Memory?)
-    uint8_t    R_M:3; /* 
-                       * campo ¿Registro/Memoria?  (reg2?).
-                       * dependiendo de la instruccion este campo se usa como indicar de un segundo registro fuente o destino.
-                       * En caso contrario se usa para el acceso a memoria o indicar el uso de un campo SIB.
-                       * 
-                       * Formas con el Byte ModR/M solo para 32bits:
-                       * |===|===|=================================.
-                       * |MOD|R/M|     Addressing Mode             . 
-                       * |===|===|=================================.
-                       * | 00|000|[ eax ]                          .            
-                       * | 01|000|[ eax + disp8 ]               (1).                   
-                       * | 10|000|[ eax + disp32 ]                 .  
-                       * | 11|000|register  ( al / ax / eax )   (2).
-                       * | 00|001|[ ecx ]                          .            
-                       * | 01|001|[ ecx + disp8 ]                  . 
-                       * | 10|001|[ ecx + disp32 ]                 .                     
-                       * | 11|001|register  ( cl / cx / ecx )      .             
-                       * | 00|010|[ edx ]                          .            
-                       * | 01|010|[ edx + disp8 ]                  .                                                          
-                       * | 10|010|[ edx + disp32 ]                 .                     
-                       * | 11|010|register  ( dl / dx / edx )      .                                
-                       * | 00|011|[ ebx ]                          .            
-                       * | 01|011|[ ebx + disp8 ]                  .                    
-                       * | 10|011|[ ebx + disp32 ]                 .                     
-                       * | 11|011|register  ( bl / bx / ebx )      .             
-                       * | 00|100|SIB  Mode                     (3).                   
-                       * | 01|100|SIB  +  disp8  Mode              .     
-                       * | 10|100|SIB  +  disp32  Mode             .                         
-                       * | 11|100|register  ( ah / sp / esp )      .             
-                       * | 00|101|32-bit Displacement-Only Mode (4).                   
-                       * | 01|101|[ ebp + disp8 ]                  .                    
-                       * | 10|101|[ ebp + disp32 ]                 .                     
-                       * | 11|101|register  ( ch / bp / ebp )      .             
-                       * | 00|110|[ esi ]                          .            
-                       * | 01|110|[ esi + disp8 ]                  .                    
-                       * | 10|110|[ esi + disp32 ]                 .                     
-                       * | 11|110|register  ( dh / si / esi )      .                                
-                       * | 00|111|[ edi ]                          .            
-                       * | 01|111|[ edi + disp8 ]                  .                    
-                       * | 10|111|[ edi + disp32 ]                 .                     
-                       * | 11|111|register  ( bh / di / edi )      .     
-                       * |===|===|=================================. 
-                       */
-    uint8_t    reg:3; /* 
-                       * campo registro (reg1?).
-                       * - 000 -> al(si w = 0) / ax(si w = 1) / eax (32bits) / rax.
-                       * - 001 -> cl(si w = 0) / cx(si w = 1) / ecx (32bits) / rcx.
-                       * - 010 -> dl(si w = 0) / dx(si w = 1) / edx (32bits) / rdx.
-                       * - 011 -> bl(si w = 0) / bx(si w = 1) / ebx (32bits) / rbx.
-                       * - 100 -> ah(si w = 0) / sp(si w = 1) / esp (32bits) / rsp.
-                       * - 101 -> ch(si w = 0) / bp(si w = 1) / ebp (32bits) / rbp.
-                       * - 110 -> dh(si w = 0) / si(si w = 1) / esi (32bits) / rsi.
-                       * - 111 -> bh(si w = 0) / di(si w = 1) / edi (32bits) / rdi.
-                       */
-    uint8_t    mod:2; /*
-                       * campo MOD:
-                       *  - 00 Modo de direccionamiento indirecto de registro o SIB sin desplazamiento (cuando R/M = 100) o 
-                       *        modo de direccionamiento de sólo desplazamiento (cuando R/M = 101).
-                       *  - 01 El desplazamiento con signo de un byte sigue a los bytes del modo de direccionamiento.
-                       *  - 10 El desplazamiento con signo de cuatro/dos bytes sigue a los bytes del modo de direccionamiento.
-                       *  - 11 Modo de direccionamiento de registro.
-                       */
+        union {
+        struct {
+            uint8_t    R_M:3; /* 
+                            * campo ¿Registro/Memoria?  (reg2?).
+                            * dependiendo de la instruccion este campo se usa como indicar de un segundo registro fuente o destino.
+                            * En caso contrario se usa para el acceso a memoria o indicar el uso de un campo SIB.
+                            * 
+                            * Formas con el Byte ModR/M solo para 32bits:
+                            * |===|===|=================================.
+                            * |MOD|R/M|     Addressing Mode             . 
+                            * |===|===|=================================.
+                            * | 00|000|[ eax ]                          .            
+                            * | 01|000|[ eax + disp8 ]               (1).                   
+                            * | 10|000|[ eax + disp32 ]                 .  
+                            * | 11|000|register  ( al / ax / eax )   (2).
+                            * | 00|001|[ ecx ]                          .            
+                            * | 01|001|[ ecx + disp8 ]                  . 
+                            * | 10|001|[ ecx + disp32 ]                 .                     
+                            * | 11|001|register  ( cl / cx / ecx )      .             
+                            * | 00|010|[ edx ]                          .            
+                            * | 01|010|[ edx + disp8 ]                  .                                                          
+                            * | 10|010|[ edx + disp32 ]                 .                     
+                            * | 11|010|register  ( dl / dx / edx )      .                                
+                            * | 00|011|[ ebx ]                          .            
+                            * | 01|011|[ ebx + disp8 ]                  .                    
+                            * | 10|011|[ ebx + disp32 ]                 .                     
+                            * | 11|011|register  ( bl / bx / ebx )      .             
+                            * | 00|100|SIB  Mode                     (3).                   
+                            * | 01|100|SIB  +  disp8  Mode              .     
+                            * | 10|100|SIB  +  disp32  Mode             .                         
+                            * | 11|100|register  ( ah / sp / esp )      .             
+                            * | 00|101|32-bit Displacement-Only Mode (4).                   
+                            * | 01|101|[ ebp + disp8 ]                  .                    
+                            * | 10|101|[ ebp + disp32 ]                 .                     
+                            * | 11|101|register  ( ch / bp / ebp )      .             
+                            * | 00|110|[ esi ]                          .            
+                            * | 01|110|[ esi + disp8 ]                  .                    
+                            * | 10|110|[ esi + disp32 ]                 .                     
+                            * | 11|110|register  ( dh / si / esi )      .                                
+                            * | 00|111|[ edi ]                          .            
+                            * | 01|111|[ edi + disp8 ]                  .                    
+                            * | 10|111|[ edi + disp32 ]                 .                     
+                            * | 11|111|register  ( bh / di / edi )      .     
+                            * |===|===|=================================. 
+                            */
+            uint8_t    reg:3; /* 
+                            * campo registro (reg1?).
+                            * - 000 -> al(si w = 0) / ax(si w = 1) / eax (32bits) / rax.
+                            * - 001 -> cl(si w = 0) / cx(si w = 1) / ecx (32bits) / rcx.
+                            * - 010 -> dl(si w = 0) / dx(si w = 1) / edx (32bits) / rdx.
+                            * - 011 -> bl(si w = 0) / bx(si w = 1) / ebx (32bits) / rbx.
+                            * - 100 -> ah(si w = 0) / sp(si w = 1) / esp (32bits) / rsp.
+                            * - 101 -> ch(si w = 0) / bp(si w = 1) / ebp (32bits) / rbp.
+                            * - 110 -> dh(si w = 0) / si(si w = 1) / esi (32bits) / rsi.
+                            * - 111 -> bh(si w = 0) / di(si w = 1) / edi (32bits) / rdi.
+                            */
+            uint8_t    mod:2; /*
+                            * campo MOD:
+                            *  - 00 Modo de direccionamiento indirecto de registro o SIB sin desplazamiento (cuando R/M = 100) o 
+                            *        modo de direccionamiento de sólo desplazamiento (cuando R/M = 101).
+                            *  - 01 El desplazamiento con signo de un byte sigue a los bytes del modo de direccionamiento.
+                            *  - 10 El desplazamiento con signo de cuatro/dos bytes sigue a los bytes del modo de direccionamiento.
+                            *  - 11 Modo de direccionamiento de registro.
+                            */
+        } fields;
+        uint8_t byte;
+    }
+
+    
 } Mod_rm;
 
 /*
@@ -1151,11 +1158,36 @@ typedef struct Instruction_info
 
 // (Instrucciones en page: 2845/2875) Intel® 64 and IA-32 Architectures Software Developer’s Manual, Combined Volumes: 1, 2A, 2B, 2C, 2D, 3A, 3B,
 
+// tiene mod/rm-reg
 #define MOD_RM_REG_MASK  (1 << 0)
+
+// tiene un desplazamiento bajo opcional indicado por mod/rm:
 #define DISP_LOW_MASK    (1 << 1)
+
+// tiene un desplazamiento alto opcional indicado por mod/rm:
 #define DISP_HIGH_MASK   (1 << 2)
+
+// tiene campo datos del 8086
 #define DATA_MASK_8086   (1 << 3)
+
+// el campo opcode tiene campo W
 #define DATA_MASK_8086_w (1 << 4)
+
+// usa registro-memoria de 16bits
+#define REG_MEM_16_MASK  (1 << 5)
+
+// tiene datos inmediatos de 8bits
+#define INMED8_MASK      (1 << 6)
+
+// tiene datos SX
+#define DATA_SX_MASK     (1 << 7)
+
+// usa registro-memoria de 8bits
+#define REG_MEM_8_MASK   (1 << 8)
+
+// tiene datos inmediatos de 16bits
+#define INMED16_MASK     (1 << 9)
+
 /*
  * El 8086 dispone de un byte de opcode maximo, donde se encuentra el Bit D y el bit W normalmente
  * El segundo byte suele codificar Mod/RM
@@ -1171,29 +1203,34 @@ typedef struct Instruction_info
  * el sexto byte codifica un dato alto
  * maximo 6 bytes por instruccion.
  */
-
-__attribute__((__section__(".instruccion"))) static uint8_t my_instruccion_8086[] = {
+__attribute__((__section__(".instruccion"))) static uint16_t my_instruccion_8086[] = {
     [0b00000000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(00 -> 0b00000000) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
     [0b00000001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(01 -> 0b00000001) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
-    [0b00000010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(02 -> 0b00000010) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
-    [0b00000011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00000010] = REG_MEM_8_MASK  | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(02 -> 0b00000010) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00000011] = REG_MEM_16_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
 
-    [0b00000100] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(04 -> 0b00000100) -> (add) (data), (data if w = 1)
-    [0b00000101] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(05 -> 0b00000101) -> (add) (data), (data if w = 1)
+    [0b00000100] = INMED8_MASK,  // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00000101] = INMED16_MASK, // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
 
-    [0b10000000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(80 -> 0b10000000) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
-    [0b10000001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(81 -> 0b10000001) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
-    [0b10000010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(82 -> 0b10000010) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
-    [0b10000011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(83 -> 0b10000011) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    //[0b00000100] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(04 -> 0b00000100) -> (add) (data), (data if w = 1)
+    //[0b00000101] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(05 -> 0b00000101) -> (add) (data), (data if w = 1)
 
     [0b00010000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(00 -> 0b00000000) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
     [0b00010001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(01 -> 0b00000001) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
     [0b00010010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(02 -> 0b00000010) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
     [0b00010011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(03 -> 0b00000011) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
 
-    [0b00010100] = DISP_HIGH_MASK | DATA_MASK_8086,                  // opcode(04 -> 0b00010100)  -> (add) (data), (data if w = 1)
-    [0b00010101] = DISP_HIGH_MASK | DATA_MASK_8086,                  // opcode(04 -> 0b00010101)  -> (add) (data), (data if w = 1)
+    [0b00010100] = INMED8_MASK | DISP_HIGH_MASK | DATA_MASK_8086,                  // opcode(04 -> 0b00010100)  -> (add) (data), (data if w = 1)
+    [0b00010101] = INMED16_MASK | DISP_HIGH_MASK | DATA_MASK_8086,                  // opcode(04 -> 0b00010101)  -> (add) (data), (data if w = 1)
 
+
+    // tiene Mod/rm, pero se usa para identificar varias instrucciones atraves del campo reg
+    [0b10000000] = REG_MEM_8_MASK | INMED8_MASK | MOD_RM_REG_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, 
+    //[0b10000000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(80 -> 0b10000000) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    [0b10000001] = MOD_RM_REG_MASK | REG_MEM_16_MASK | INMED16_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(81 -> 0b10000001) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    [0b10000010] = REG_MEM_8_MASK  | INMED8_MASK     | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(82 -> 0b10000010) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    // instruccion reg16/mem16, inmed8
+    [0b10000011] = REG_MEM_16_MASK | INMED8_MASK     | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w | DATA_SX_MASK, // opcode(83 -> 0b10000011) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
 };
 
 typedef enum Prefix_x86_Segment_Register {
@@ -1240,7 +1277,7 @@ typedef enum Prefix_x86_others {
  *      - A11 y A12 = contienen mapas para los opcodes de las instrucciones de escape que comienzan por 0xDA (pagina: 2860)
  * 
  */
-int dissamble(uint8_t* code, uint8_t* code_final, size_t* position, Instruction_info* instruction, encoder_x86 encode);
+int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instruction_info* instruction, encoder_x86 encoder);
 void print_Instruction_info(Instruction_info* instruction, encoder_x86 encode);
 
 

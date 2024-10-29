@@ -57,9 +57,14 @@ size_t get_size_func(unsigned char* func_ptr) {
 
 int main(){
     uint8_t instrucciones[] = {
-        0x67, 0x12, 0x04, 0x20, // adc al, [al+ah]
-        0x03, 0x00,             // add ax, [bx+si]
-        0x13, 0x0E,             // adc cx, [ax+cx]
+        // instruccion ilegal:
+        //0x67, 0x12, 0x04, 0x20, // adc al, [al+ah] // 0x04 codifica desplazamiento bajo
+        0x03, 0x87, 0x34, 0x12, // add ax, [bx+0x1234]
+        0x02, 0x87, 0x34, 0x12, // add al, [bx+0x1234]
+        0x04, 0x99,             // add al, 0x99
+        0x05, 0x88, 0x99,       // add ax, 0x99
+        0x03, 0x00,             // add ax, [bx+si] 
+        // 0x13, 0x0E,             // adc cx, [ax+cx] // instruccion ilegal?
         0x83, 0xc0, 0x10,       // add ax, 16
         0x83, 0xd1, 0x20,       // adc cx, 32
         0x14, 0x30,             // adc al, 48
@@ -69,16 +74,17 @@ int main(){
     };
 
     Instruction_info instruccion = {0};
-    size_t position = 0;
+    size_t position = 0, position_old = position;
     while (dissamble(
-        instrucciones, 
+        instrucciones + position, 
         instrucciones + sizeof(instrucciones),
         &position, 
         &instruccion, ENCODER_IN_16bits
     )) { // mientras dissamble devuelva 1, quedara instrucciones por desensamblar
         print_Instruction_info(&instruccion, ENCODER_IN_16bits);
-        printf("%p - %p -> %zu\n", instrucciones, instrucciones + sizeof(instrucciones), position);
+        printf("[*] size instruction %d (%p - %p -> %zu)\n", (position-position_old)+1, instrucciones + position, instrucciones + sizeof(instrucciones), position);
         memset(&instruccion, 0, sizeof(Instruction_info));
+        position_old = position;
     }
     
    
