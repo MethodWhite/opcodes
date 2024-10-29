@@ -64,7 +64,7 @@ int main(){
         0x04, 0x99,             // add al, 0x99
         0x05, 0x88, 0x99,       // add ax, 0x99
         0x03, 0x00,             // add ax, [bx+si] 
-        // 0x13, 0x0E,             // adc cx, [ax+cx] // instruccion ilegal?
+        // 0x13, 0x0E,          // adc cx, [ax+cx] // instruccion ilegal?
         0x83, 0xc0, 0x10,       // add ax, 16
         0x83, 0xd1, 0x20,       // adc cx, 32
         0x14, 0x30,             // adc al, 48
