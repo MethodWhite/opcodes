@@ -36,7 +36,7 @@
 
 int dissamble(uint8_t* code, uint8_t* code_final, size_t* position, Instruction_info* instruction, encoder_x86 encode){
     //uint8_t *ptr_code = code + *position;
-    uint8_t byte = code + *position;
+    uint8_t byte = *(code + *position);
     switch (byte)
     {
         case Prefix_addr_size: 
