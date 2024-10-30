@@ -37,7 +37,7 @@
 size_t get_size_func(unsigned char* func_ptr) {
     for (size_t n_bytes_func = 0; func_ptr != NULL; func_ptr++)
     {
-        if ( 
+        if (
             (
                 *(func_ptr + 0) == (unsigned char)0xc3 &&
                 *(func_ptr + 1) == (unsigned char)0xc3 &&
@@ -53,44 +53,51 @@ size_t get_size_func(unsigned char* func_ptr) {
         }
     }
     return 0;
-}   
+}
 
 int main(){
     uint8_t instrucciones[] = {
         // instruccion ilegal:
         //0x67, 0x12, 0x04, 0x20, // adc al, [al+ah] // 0x04 codifica desplazamiento bajo
-        0x03, 0x87, 0x34, 0x12, // add ax, [bx+0x1234]
-        0x02, 0x87, 0x34, 0x12, // add al, [bx+0x1234]
-        0x04, 0x99,             // add al, 0x99
-        0x05, 0x88, 0x99,       // add ax, 0x99
-        0x03, 0x00,             // add ax, [bx+si] 
-        // 0x13, 0x0E,          // adc cx, [ax+cx] // instruccion ilegal?
-        0x83, 0xc0, 0x10,       // add ax, 16
-        0x83, 0xd1, 0x20,       // adc cx, 32
-        0x14, 0x30,             // adc al, 48
-        0x80, 0xc1, 0x40,       // add cl, 64
-        0x80, 0xd1, 0x50,       // adc cl, 80
+        0x00, 0x80, 0x43, 0x65,         // add byte ptr [bx + si + 0x6543], al
+        0x01, 0xa8, 0x43, 0x65,         // add word ptr [bx + si + 0x6543], bp
+        0x02, 0x87, 0x34, 0x12,         // add al, [bx+0x1234]
+        0x03, 0x87, 0x34, 0x12,         // add ax, [bx+0x1234]
+        0x03, 0x00,                     // add ax, [bx+si]
+        0x04, 0x99,                     // add al, 0x99
+        0x05, 0x88, 0x99,               // add ax, 0x99
+        0x06,                           // push ES
+        0x07,                           // pop  ES
+        0x08, 0xdc,                     // or ah, bl
+        0x08, 0x64, 0x10                // or byte [si + 0x10], ah
+        // 0x13, 0x0E,                  // adc cx, [ax+cx] // instruccion ilegal?
+        0x83, 0xc0, 0x10,               // add ax, 16
+        0x83, 0xd1, 0x20,               // adc cx, 32
+        0x14, 0x30,                     // adc al, 48
+        0x80, 0xc1, 0x40,               // add cl, 64
+        0x80, 0xd1, 0x50,               // adc cl, 80
 
     };
 
     Instruction_info instruccion = {0};
     size_t position = 0, position_old = position;
     while (dissamble(
-        instrucciones + position, 
+        instrucciones + position,
         instrucciones + sizeof(instrucciones),
-        &position, 
+        &position,
         &instruccion, ENCODER_IN_16bits
     )) { // mientras dissamble devuelva 1, quedara instrucciones por desensamblar
         print_Instruction_info(&instruccion, ENCODER_IN_16bits);
-        printf("[*] size instruction %d (%p - %p -> %zu)\n", (position-position_old)+1, instrucciones + position, instrucciones + sizeof(instrucciones), position);
+        printf("[*] size instruction %d (%p - %p -> %zu)\n", (position-position_old)+1,
+            instrucciones + position, instrucciones + sizeof(instrucciones), position);
         memset(&instruccion, 0, sizeof(Instruction_info));
         position_old = position;
     }
     
-   
+
 
     puts("Exit...");
     return 0;
-    
+
 }
 

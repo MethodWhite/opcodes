@@ -95,6 +95,12 @@ int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instru
     instruction->flags = my_instruccion_8086[*code];
     instruction->opcode1.opcode_byte.byte = *code;
     *position += 1; code++;
+
+    // si la unica flag activa es que tiene registro de segmento, salir
+    // posiblemente se trate de una instruccion como push/pop <reg_seg>:
+    if (REG_SEG_MASK == instruction->flags) return 1;
+
+
     if (instruction->flags & MOD_RM_REG_MASK){
         instruction->Mod_rm.byte = *code;
         *position += 1; code++;
@@ -165,6 +171,8 @@ void print_Instruction_info(Instruction_info* instruction, encoder_x86 encode){
         printf("REG_MEM_8_MASK\n");}
     if (INMED16_MASK & instruction->flags){
         printf("INMED16_MASK\n");}
+    if (REG_SEG_MASK & instruction->flags){
+        printf("REG_SEG_MASK\n");}
     
 
     printf("instruction->flags_prefix %02x\n", instruction->flags_prefix);    

@@ -1141,8 +1141,15 @@ typedef union data
     uint64_t ui64;
 } data;
 
+typedef enum reg_seg_x86 {
+    reg_seg_ES,
+    reg_seg_DS,
+    reg_seg_CS
+} reg_seg_x86;
+
 typedef struct Instruction_info
 {
+    reg_seg_x86 reg_seg;         // almacena el registro de segmento
     opcode  opcode1;         // 7
     Mod_rm  Mod_rm;          // 8
     SIB     SIB;             // 9
@@ -1188,6 +1195,9 @@ typedef struct Instruction_info
 // tiene datos inmediatos de 16bits
 #define INMED16_MASK     (1 << 9)
 
+// usa un registro de segmento 16bits
+#define REG_SEG_MASK     (1 << 10)
+
 /*
  * El 8086 dispone de un byte de opcode maximo, donde se encuentra el Bit D y el bit W normalmente
  * El segundo byte suele codificar Mod/RM
@@ -1211,6 +1221,23 @@ __attribute__((__section__(".instruccion"))) static uint16_t my_instruccion_8086
 
     [0b00000100] = INMED8_MASK,  // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
     [0b00000101] = INMED16_MASK, // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    // push es:
+    [0b00000110] = REG_SEG_MASK,
+
+    // pop es:
+    [0b00000111] = REG_SEG_MASK,
+
+    // or reg8/mem8, reg8
+    [0b00001000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK,
+
+    // or reg16/mem16, reg16
+    [0b00001001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK,
+
+    // or reg8 ,reg8/mem8
+    [0b00001000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK,
+
+    // or reg16, reg16/mem16
+    [0b00001001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK,
 
     //[0b00000100] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(04 -> 0b00000100) -> (add) (data), (data if w = 1)
     //[0b00000101] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(05 -> 0b00000101) -> (add) (data), (data if w = 1)
