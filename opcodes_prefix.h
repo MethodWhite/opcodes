@@ -939,7 +939,7 @@ typedef union opcode // estructura para representar los opcodes
     } opcode_byte;          // acceso a todos los campos en forma de byte
 } opcode;                   
 
-typedef struct Mod_rm { // estructura para representar el mod/rm (¿Register/Memory?)
+typedef struct Mod_rm { // estructura para representar el mod/rm (¿Register/Memory?) https://en.wikipedia.org/wiki/ModR/M
         union {
         struct {
             uint8_t    R_M:3; /* 
@@ -1178,7 +1178,7 @@ typedef struct Instruction_info
 #define DATA_MASK_8086   (1 << 3)
 
 // el campo opcode tiene campo W
-#define DATA_MASK_8086_w (1 << 4)
+#define MASK_PREFIX      (1 << 4)
 
 // usa registro-memoria de 16bits
 #define REG_MEM_16_MASK  (1 << 5)
@@ -1197,6 +1197,12 @@ typedef struct Instruction_info
 
 // usa un registro de segmento 16bits
 #define REG_SEG_MASK     (1 << 10)
+
+// instruccion indocumentada
+#define UNDOCUMENTED_OPCODE_MASK     (1 << 11)
+
+// tiene datos tttn, para instrucciones de tipo salto condicional, se usara el campo mod-reg-rm para almacenar el tttn obtenido del opcode
+#define TTTN_MASK     (1 << 12)
 
 /*
  * El 8086 dispone de un byte de opcode maximo, donde se encuentra el Bit D y el bit W normalmente
@@ -1219,25 +1225,89 @@ __attribute__((__section__(".instruccion"))) static uint16_t my_instruccion_8086
     [0b00000010] = REG_MEM_8_MASK  | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(02 -> 0b00000010) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
     [0b00000011] = REG_MEM_16_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
 
-    [0b00000100] = INMED8_MASK,  // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
-    [0b00000101] = INMED16_MASK, // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    // add al, inmed16
+    [0b00000100] = INMED8_MASK,  // opcode(04 -> 0b00000011) -> (add) (data)
+
+    // add ax, inmed16
+    [0b00000101] = INMED16_MASK, // opcode(05 -> 0b00000011) -> (add) (data low), (data high if W = 1)
+
     // push es:
-    [0b00000110] = REG_SEG_MASK,
+    [0b00000110] = REG_SEG_MASK, // opcode(06 -> 0b00000110)
 
     // pop es:
-    [0b00000111] = REG_SEG_MASK,
+    [0b00000111] = REG_SEG_MASK, // opcode(07 -> 0b00000111)
 
     // or reg8/mem8, reg8
-    [0b00001000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK,
+    [0b00001000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK, // opcode(08 -> 0b00001000)
 
     // or reg16/mem16, reg16
-    [0b00001001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK,
+    [0b00001001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK, // opcode(09 -> 0b00001001)
 
     // or reg8 ,reg8/mem8
-    [0b00001000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK,
+    [0b00001010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK, // opcode(0a -> 0b00001010)
 
     // or reg16, reg16/mem16
-    [0b00001001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK,
+    [0b00001011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK, // opcode(0b -> 0b00001011)
+
+    // or al, inmed8
+    [0b00001100] = INMED8_MASK,  // opcode(0c -> 0b00001100) -> (or) (data)
+
+    // or al, inmed16
+    [0b00001101] = INMED16_MASK,  // opcode(0d -> 0b00001101) -> (or) (data high if W = 1)
+
+    // push es
+    [0b00001110] = REG_SEG_MASK,                            // opcode(0e -> 0b00001110)
+
+    // pop cs -> https://www.righto.com/2023/07/undocumented-8086-instructions.html
+    [0b00001111] = REG_SEG_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(0f -> 0b00001111)
+    /*
+     * El código de operación 0F es el primer agujero en la tabla de códigos de operación. El
+     * 8086 tiene instrucciones para insertar y extraer los cuatro registros de segmento, excepto
+     * que el código de operación 0F no está definido donde debería estar POP CS. Este código de
+     * operación realiza POP CS con éxito, por lo que la pregunta es ¿por qué no está definido? La
+     * razón es que POP CS es esencialmente inútil y no hace lo que se esperaría, por lo que Intel
+     * pensó que era mejor no documentarlo.
+     * Para entender por qué POP CS es inútil, necesito dar un paso atrás y explicar los registros de
+     * segmento del 8086. El 8086 tiene un espacio de direcciones de 20 bits, pero registros de 16 bits.
+     * Para que esto funcione, el 8086 tiene el concepto de segmentos: se accede a la memoria en
+     * fragmentos de 64K llamados segmentos, que se colocan en el espacio de direcciones de 1 megabyte.
+     * En concreto, hay cuatro segmentos: segmento de código, segmento de pila, segmento de datos y
+     * segmento adicional, con cuatro registros de segmento que definen el inicio del segmento: CS, SS, DS y ES.
+     * Una parte incómoda del direccionamiento de segmentos es que si desea acceder a más de 64K,
+     * necesita cambiar el registro de segmento. Por lo tanto, puede insertar el registro de segmento
+     * de datos, cambiarlo temporalmente para poder acceder a una nueva parte de la memoria y luego
+     * extraer el valor del registro de segmento de datos anterior de la pila. Esto utilizaría las
+     * instrucciones PUSH DS y POP DS. Pero, ¿por qué no POP CS?
+     * El 8086 ejecuta el código desde el segmento de código, con el puntero de instrucción (IP)
+     * rastreando la ubicación en el segmento de código. El problema principal con POP CS es que cambia
+     * el segmento de código, pero no el puntero de instrucción, por lo que ahora está ejecutando código
+     * en el desplazamiento anterior en un segmento nuevo. A menos que alinee su código con mucho cuidado,
+     * el resultado es que está saltando a un lugar inesperado en la memoria. (Normalmente, se desea cambiar
+     * CS y el puntero de instrucción al mismo tiempo, utilizando una instrucción CALL o JMP).
+     * El segundo problema con POP CS es la precarga. Para lograr eficiencia, el 8086 precarga las
+     * instrucciones antes de que sean necesarias, almacenándolas en una cola de precarga de 6 bytes.
+     * Cuando se realiza un salto, por ejemplo, el microcódigo vacía la cola de precarga para que la
+     * ejecución continúe con las nuevas instrucciones, en lugar de las instrucciones antiguas. Sin embargo,
+     * las instrucciones que abren un registro de segmento no vacían el búfer de precarga. Por lo tanto,
+     * POP CS no solo salta a una ubicación inesperada en la memoria, sino que ejecutará una cantidad
+     * impredecible de instrucciones desde la ruta de código anterior.
+     * El microcódigo del registro de segmento POP que se muestra a continuación contiene mucho en tres
+     * microinstrucciones. La primera microinstrucciones abre un valor de la pila. Específicamente, mueve
+     * el puntero de pila (SP) al registro indirecto (IND). El registro indirecto es un registro interno,
+     * invisible para el programador, que contiene el desplazamiento de dirección para los accesos a la
+     * memoria. La primera microinstrucción también realiza una lectura de memoria (R) desde el segmento
+     * de pila (SS) y luego incrementa IND en 2 (P2, más 2). La segunda microinstrucción mueve IND al
+     * puntero de pila, actualizando el puntero de pila con el nuevo valor. También le dice al motor de
+     * microcódigo que esta microinstrucción es la penúltima (NXT) y que se puede iniciar la siguiente
+     * instrucción de máquina. La microinstrucción final mueve el valor leído de la memoria al registro de
+     * segmento apropiado y ejecuta la siguiente instrucción. Específicamente, lee y escribe datos de
+     * colocación en el registro OPR (operando) interno. El hardware usa el registro N para indicar el
+     * registro especificado por la instrucción. Es decir, el valor se almacenará en el registro
+     * CS, DS, ES o SS, dependiendo del patrón de bits en la instrucción. Por lo tanto, el mismo
+     * microcódigo funciona para los cuatro registros de segmento. Esta es la razón por la que
+     * POP CS funciona aunque POP CS no se haya implementado explícitamente en el microcódigo; 
+     * usa el código común.
+     */
 
     //[0b00000100] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(04 -> 0b00000100) -> (add) (data), (data if w = 1)
     //[0b00000101] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(05 -> 0b00000101) -> (add) (data), (data if w = 1)
@@ -1250,14 +1320,184 @@ __attribute__((__section__(".instruccion"))) static uint16_t my_instruccion_8086
     [0b00010100] = INMED8_MASK | DISP_HIGH_MASK | DATA_MASK_8086,                  // opcode(04 -> 0b00010100)  -> (add) (data), (data if w = 1)
     [0b00010101] = INMED16_MASK | DISP_HIGH_MASK | DATA_MASK_8086,                  // opcode(04 -> 0b00010101)  -> (add) (data), (data if w = 1)
 
+    // Jxx(saltos condicionales) (no documentados)
+    [0b01100000] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(60 -> 0b01100000) -> 0x60 (equivalent: 0x70) = JO
+    [0b01100001] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(61 -> 0b01100001) -> 0x61 (equivalent: 0x71) = JNO
+    [0b01100010] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(62 -> 0b01100010) -> 0x62 (equivalent: 0x72) = JC
+    [0b01100011] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(63 -> 0b01100011) -> 0x63 (equivalent: 0x73) = JAE
+    [0b01100100] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(64 -> 0b01100100) -> 0x64 (equivalent: 0x74) = JE
+    [0b01100101] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(65 -> 0b01100101) -> 0x65 (equivalent: 0x75) = JNZ
+    [0b01100110] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(66 -> 0b01100110) -> 0x66 (equivalent: 0x76) = JBE
+    [0b01100111] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(67 -> 0b01100111) -> 0x67 (equivalent: 0x77) = JA
+    [0b01101000] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(68 -> 0b01101000) -> 0x68 (equivalent: 0x78) = JS
+    [0b01101001] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(69 -> 0b01101001) -> 0x69 (equivalent: 0x79) = JNS
+    [0b01101010] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6a -> 0b01101010) -> 0x6A (equivalent: 0x7A) = JPE
+    [0b01101011] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6b -> 0b01101011) -> 0x6B (equivalent: 0x7B) = JNP
+    [0b01101100] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6c -> 0b01101100) -> 0x6C (equivalent: 0x7C) = JL
+    [0b01101101] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6d -> 0b01101101) -> 0x6D (equivalent: 0x7D) = JGE
+    [0b01101110] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6e -> 0b01101110) -> 0x6E (equivalent: 0x7E) = JLE
+    [0b01101111] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6f -> 0b01101111) -> 0x6F (equivalent: 0x7F) = JG
+    // Jxx(saltos condicionales) (documentados)
+    [0b01110000] = TTTN_MASK,                            // opcode(70 -> 0b01110000) -> 0x70 (equivalent: 0x60) = JO
+    [0b01110001] = TTTN_MASK,                            // opcode(71 -> 0b01110001) -> 0x71 (equivalent: 0x61) = JNO
+    [0b01110010] = TTTN_MASK,                            // opcode(72 -> 0b01110010) -> 0x72 (equivalent: 0x62) = JC
+    [0b01110011] = TTTN_MASK,                            // opcode(73 -> 0b01110011) -> 0x73 (equivalent: 0x63) = JAE
+    [0b01110100] = TTTN_MASK,                            // opcode(74 -> 0b01110100) -> 0x74 (equivalent: 0x64) = JE
+    [0b01110101] = TTTN_MASK,                            // opcode(75 -> 0b01110101) -> 0x75 (equivalent: 0x65) = JNZ
+    [0b01110110] = TTTN_MASK,                            // opcode(76 -> 0b01110110) -> 0x76 (equivalent: 0x66) = JBE
+    [0b01110111] = TTTN_MASK,                            // opcode(77 -> 0b01110111) -> 0x77 (equivalent: 0x67) = JA
+    [0b01111000] = TTTN_MASK,                            // opcode(78 -> 0b01111000) -> 0x78 (equivalent: 0x68) = JS
+    [0b01111001] = TTTN_MASK,                            // opcode(79 -> 0b01111001) -> 0x79 (equivalent: 0x69) = JNS
+    [0b01111010] = TTTN_MASK,                            // opcode(7a -> 0b01111010) -> 0x7A (equivalent: 0x6A) = JPE
+    [0b01111011] = TTTN_MASK,                            // opcode(7b -> 0b01111011) -> 0x7B (equivalent: 0x6B) = JNP
+    [0b01111100] = TTTN_MASK,                            // opcode(7c -> 0b01111100) -> 0x7C (equivalent: 0x6C) = JL
+    [0b01111101] = TTTN_MASK,                            // opcode(7d -> 0b01111101) -> 0x7D (equivalent: 0x6D) = JGE
+    [0b01111110] = TTTN_MASK,                            // opcode(7e -> 0b01111110) -> 0x7E (equivalent: 0x6E) = JLE
+    [0b01111111] = TTTN_MASK,                            // opcode(7f -> 0b01111111) -> 0x7F (equivalent: 0x6F) = JG
+
 
     // tiene Mod/rm, pero se usa para identificar varias instrucciones atraves del campo reg
-    [0b10000000] = REG_MEM_8_MASK | INMED8_MASK | MOD_RM_REG_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, 
-    //[0b10000000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(80 -> 0b10000000) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
-    [0b10000001] = MOD_RM_REG_MASK | REG_MEM_16_MASK | INMED16_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(81 -> 0b10000001) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
-    [0b10000010] = REG_MEM_8_MASK  | INMED8_MASK     | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w, // opcode(82 -> 0b10000010) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    [0b10000000] = REG_MEM_8_MASK | INMED8_MASK | MOD_RM_REG_MASK | DATA_MASK_8086,
+    //[0b10000000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086, // opcode(80 -> 0b10000000) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    [0b10000001] = MOD_RM_REG_MASK | REG_MEM_16_MASK | INMED16_MASK | DISP_HIGH_MASK | DATA_MASK_8086, // opcode(81 -> 0b10000001) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    [0b10000010] = REG_MEM_8_MASK  | INMED8_MASK     | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086, // opcode(82 -> 0b10000010) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    
     // instruccion reg16/mem16, inmed8
-    [0b10000011] = REG_MEM_16_MASK | INMED8_MASK     | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_MASK_8086_w | DATA_SX_MASK, // opcode(83 -> 0b10000011) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+    [0b10000011] = REG_MEM_16_MASK | INMED8_MASK     | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_SX_MASK, // opcode(83 -> 0b10000011) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
+
+    // ret near inmed16, es la misma que C2
+    [0b11000000] = INMED16_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(192 -> 0b11000000) -> 0xC0 (equivalent: 0xC2) = ret near inmed16
+
+    // ret ( no documentada)
+    [0b11000001] = UNDOCUMENTED_OPCODE_MASK,                // opcode(193 -> 0b11000001) -> 0xC1 (equivalent: 0xC3) = ret
+
+    // ret near inmed16, es la misma que C0
+    [0b11000010] = INMED16_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(194 -> 0b11000010) -> 0xC2 (equivalent: 0xC0) = ret near inmed16
+
+    // ret ( documentada ), no tiene flags
+    [0b11000011] = 0,                                       // opcode(195 -> 0b11000011) -> 0xC3 (equivalent: 0xC1) = ret
+
+    // ret far inmed16, es la misma que CA
+    [0b11001000] = INMED16_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(200 -> 0b11001000) -> 0xC8 (equivalent: 0xCA) = ret far inmed16
+
+    // ret far ( no documentada)
+    [0b11001001] = UNDOCUMENTED_OPCODE_MASK,                // opcode(201 -> 0b11001001) -> 0xC9 (equivalent: 0xCB) = ret far
+
+    // ret far inmed16, es la misma que C8
+    [0b11001010] = INMED16_MASK,                            // opcode(202 -> 0b11001010) -> 0xCA (equivalent: 0xC8) = ret far inmed16
+
+    // ret far (documentada)
+    [0b11001011] = 0,                                       // opcode(203 -> 0b11001011) -> 0xCB (equivalent: 0xC9) = ret far
+
+    // rol/ror/rcl/rcr/shl/shr/shr/sar reg8/mem8, 1
+    // cuando el segundo byte se codifica como 110 en reg, se transforma en una instruccion no documentada
+    /*
+     * Opcode D0h xx110xxxb
+     * Documented equivalent: None
+     * Instruction: SETMO byte R/M
+     * Action: Moves byte -1 (FFh) to its 8-bit operand and set flags accordingly
+     * 
+     * 8-bit operand <— FFh (AL for D0F0h, CL for D0F1h…)
+     * Clear CF (NC)
+     * Set PF (PE)
+     * Clear AF (NA)
+     * Clear ZF (NZ)
+     * Set SF (NG)
+     * Clear OF (NV)
+     * Byte operand and flags (not sure about AF) are modified as if the following instruction was executed: OR AL, 0FFh
+     */
+    [0b11010000] = MOD_RM_REG_MASK | DISP_LOW_MASK,         // opcode(d0 -> 0b11010000)
+
+    /*
+     * Documented equivalent: None
+     * Instruction: SETMO word R/M
+     * Action: Moves word -1 (FFFFh) to its 16-bit operand and set flags accordingly
+     * 
+     * 16-bit operand <— FFFFh (AX for D1F0h, CX for D1F1h…)
+     * Clear CF (NC)
+     * Set PF (PE)
+     * Clear AF (NA)
+     * Clear ZF (NZ)
+     * Set SF (NG)
+     * Clear OF (NV)
+     * Word operand and flags (not sure about AF) are modified as if the following instruction was executed: OR AX, 0FFFFh
+     */
+    // rol/ror/rcl/rcr/shl/shr/shr/sar reg16/mem16, 1
+    // cuando el segundo byte se codifica como 110 en reg, se transforma en una instruccion no documentada
+    [0b11010001] = MOD_RM_REG_MASK | DISP_LOW_MASK,         // opcode(d1 -> 0b11010001)
+
+    // rol/ror/rcl/rcr/shl/shr/shr/sar reg8/mem8, cl
+    // cuando el segundo byte se codifica como 110 en reg, se transforma en una instruccion no documentada
+    /*
+     * Opcode D2h xx110xxxb
+     * Documented equivalent: None
+     * Instruction: SETMOC byte R/M
+     * Action: If CL != 0, changes 8-bit operand and flags like SETMO (D0h xx110xxxb instruction code), otherwise nothing changes
+     * 
+     * Notes:
+     * “SETMOC” stands for “SET Minus One if CL != 0”
+     * D2h is the first byte of the byte-operand, CL-positions shift instructions (in the instruction matrix: “Shift b,v”). The type of shift is specified in bits 3 to 5 of the second byte, but it is not documented when these bits are 110b.
+     * The destination operand can be specified, but the zero-test is always performed on CL.
+    */
+    [0b11010010] = MOD_RM_REG_MASK | DISP_LOW_MASK,         // opcode(d2 -> 0b11010010)
+
+
+    // rol/ror/rcl/rcr/shl/shr/shr/sar reg16/mem16, cl
+    // cuando el segundo byte se codifica como 110 en reg, se transforma en una instruccion no documentada
+    /*
+     * Opcode D3h xx110xxxb
+     * Documented equivalent: None
+     * Instruction: SETMOC word R/M
+     * Action: If CL != 0, changes 16-bit operand and flags like SETMO (D1h xx110xxxb instruction code), otherwise nothing changes
+     * 
+     * Notes:
+     * 
+     * “SETMOC” stands for “SET Minus One if CL != 0”
+     * D3h is the first byte of the word-operand, CL-positions shift instructions (in the instruction matrix: “Shift w,v”). The type of shift is specified in bits 3 to 5 of the second byte, but it is not documented when these bits are 110b.
+     * The destination operand can be specified, but the zero-test is always performed on CL.
+     */
+    [0b11010011] = MOD_RM_REG_MASK | DISP_LOW_MASK,         // opcode(D3 -> 0b11010011)
+
+    // SALC (SET Carry flag to AL), instruccion no documentada
+    [0b11010110] = 0,                                       // opcode(d6 -> 0b11010110) -> 0xD6
+
+    // prefijo LOCK (documentado)
+    [0b11110000] = MASK_PREFIX,                             // opcode(f0 -> 0b11110000) -> 0xF0 (equivalent: 0xF1) = prefijo LOCK
+
+    // prefijo LOCK (no documentado)
+    [0b11110001] = UNDOCUMENTED_OPCODE_MASK | MASK_PREFIX,  // opcode(f1 -> 0b11110001) -> 0xF1 (equivalent: 0xF0) = prefijo LOCK
+
+    // test/not/neg/mul/imul/div/idiv/ reg8/mem8
+    /*
+     * Cuando reg es 001, la instruccion se transforma en una instruccion no documentada
+     * la cual equivale a la misma que reg == 000 en este caso
+     */
+    [0b11110110] = MOD_RM_REG_MASK | DISP_LOW_MASK,
+
+    // test/not/neg/mul/imul/div/idiv/ reg16/mem16
+    /*
+     * Cuando reg es 001, la instruccion se transforma en una instruccion no documentada
+     * la cual equivale a la misma que reg == 000 en este caso
+     */
+    [0b11110111] = MOD_RM_REG_MASK | DISP_LOW_MASK,
+
+    // inc/dec reg8/mem8
+    /*
+     * inc cuando mod == 000
+     * dec cuando mod == 001
+     * en el resto de casos se vuelve una instruccion no docmentada
+     * cuando mod = 111 se vuelve en la instruccion 0xff con mod = 111, lo que
+     * lo convierte en push mem16
+     */
+    [0b11111110] = DISP_LOW_MASK, // opcode(fe -> 0b11111110)
+
+    // inc/dec/call/jmp/push reg16/mem16
+    /*
+     * cuando mod = 111, la instruccion se transforma en una instruccion no documentada
+     * la cual equivale a la misma que mod == 110 en este caso(push mem16)
+     */
+    [0b11111111] = DISP_LOW_MASK // opcode(ff -> 0b11111111)
+    
 };
 
 typedef enum Prefix_x86_Segment_Register {

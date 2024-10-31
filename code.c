@@ -59,23 +59,32 @@ int main(){
     uint8_t instrucciones[] = {
         // instruccion ilegal:
         //0x67, 0x12, 0x04, 0x20, // adc al, [al+ah] // 0x04 codifica desplazamiento bajo
-        0x00, 0x80, 0x43, 0x65,         // add byte ptr [bx + si + 0x6543], al
-        0x01, 0xa8, 0x43, 0x65,         // add word ptr [bx + si + 0x6543], bp
-        0x02, 0x87, 0x34, 0x12,         // add al, [bx+0x1234]
-        0x03, 0x87, 0x34, 0x12,         // add ax, [bx+0x1234]
-        0x03, 0x00,                     // add ax, [bx+si]
-        0x04, 0x99,                     // add al, 0x99
-        0x05, 0x88, 0x99,               // add ax, 0x99
+        0x00, 0x80, 0x43, 0x65,         // add  byte ptr [bx + si + 0x6543], al
+        0x01, 0xa8, 0x43, 0x65,         // add  word ptr [bx + si + 0x6543], bp
+        0x02, 0x87, 0x34, 0x12,         // add  al, [bx+0x1234]
+        0x03, 0x87, 0x34, 0x12,         // add  ax, [bx+0x1234]
+        0x03, 0x00,                     // add  ax, [bx+si]
+        0x04, 0x99,                     // add  al, 0x99
+        0x05, 0x88, 0x99,               // add  ax, 0x99
         0x06,                           // push ES
         0x07,                           // pop  ES
-        0x08, 0xdc,                     // or ah, bl
-        0x08, 0x64, 0x10                // or byte [si + 0x10], ah
-        // 0x13, 0x0E,                  // adc cx, [ax+cx] // instruccion ilegal?
-        0x83, 0xc0, 0x10,               // add ax, 16
-        0x83, 0xd1, 0x20,               // adc cx, 32
-        0x14, 0x30,                     // adc al, 48
-        0x80, 0xc1, 0x40,               // add cl, 64
-        0x80, 0xd1, 0x50,               // adc cl, 80
+        0x08, 0xdc,                     // or   ah,  bl
+        0x08, 0x64, 0x10,               // or   byte [si + 0x10], ah
+        0x09, 0xA8, 0x43, 0x65,         // or   word ptr [bx + si + 0x6543], bp
+        0x0A, 0xDC,                     // or   bl,  ah
+        0x0A, 0x64, 0x10,               // or   ah,  byte ptr [si + 0x10]
+        0x0b, 0xA8, 0x43, 0x65,         // or bp, word ptr [bx + si + 0x6543]
+        0x0c, 0x99,                     // or  al, 0x99
+        0x0d, 0x88, 0x99,               // or  ax, 0x9988
+        0x0e,                           // push CS
+        0x14, 0x30,                     // adc  al,  48
+        0x0f,                           // pop CS
+
+        // 0x13, 0x0E,                  // adc  cx,  [ax+cx] // instruccion ilegal?
+        0x83, 0xc0, 0x10,               // add  ax,  16
+        0x83, 0xd1, 0x20,               // adc  cx,  32
+        0x80, 0xc1, 0x40,               // add  cl,  64
+        0x80, 0xd1, 0x50,               // adc  cl,  80
 
     };
 

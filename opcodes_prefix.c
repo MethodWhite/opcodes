@@ -159,8 +159,8 @@ void print_Instruction_info(Instruction_info* instruction, encoder_x86 encode){
         printf("DISP_HIGH_MASK\n");}
     if (DATA_MASK_8086   & instruction->flags){
         printf("DATA_MASK_8086\n");}
-    if (DATA_MASK_8086_w & instruction->flags){
-        printf("DATA_MASK_8086_w\n");}
+    if (MASK_PREFIX & instruction->flags){
+        printf("MASK_PREFIX\n");}
     if (REG_MEM_16_MASK & instruction->flags){
         printf("REG_MEM_16_MASK\n");}
     if (INMED8_MASK & instruction->flags){
