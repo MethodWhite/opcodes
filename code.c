@@ -103,6 +103,10 @@ int main(){
         position_old = position;
     }
     
+    for (int i = 0; i < sizeof(my_instruccion_8086)/sizeof(my_instruccion_8086[0]); i++) {
+        printf("opcode(0x%02x -> %05s) flags[0x%08x] = ", i, get_string_instruction_by_id_8086((my_instruccion_8086[i] & 0xff000000) >> 24), my_instruccion_8086[i]);
+        print_flags(my_instruccion_8086[i]);
+    }
 
 
     puts("Exit...");

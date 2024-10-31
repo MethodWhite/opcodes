@@ -50,7 +50,7 @@
 
 #include "debug_c.h"
 
-typedef enum string_instrution_id {
+typedef enum string_instrution_id_64 {
 
     // AAA – ASCII Adjust after Addition 0011 0111
     STRING_AAA,
@@ -893,7 +893,105 @@ typedef enum string_instrution_id {
      * immediate to memory 1000 00sw : mod 110 r/m : immediate data.
     */
     STRING_XOR
-} string_instrution_id;
+} string_instrution_id_64;
+
+#define STRING_INSTRUCTION8086(name)  STRING_ ## name ## _8086
+typedef enum string_instrution_id_8086 {
+    STRING_INSTRUCTION8086(ADD),
+    STRING_INSTRUCTION8086(OR),
+    STRING_INSTRUCTION8086(ADC),
+    STRING_INSTRUCTION8086(SBB),
+    STRING_INSTRUCTION8086(AND),
+    STRING_INSTRUCTION8086(DAA),
+    STRING_INSTRUCTION8086(SUB),
+    STRING_INSTRUCTION8086(DAS),
+    STRING_INSTRUCTION8086(XOR),
+    STRING_INSTRUCTION8086(AAA),
+    STRING_INSTRUCTION8086(CMP),
+    STRING_INSTRUCTION8086(AAS),
+    STRING_INSTRUCTION8086(JO),
+    STRING_INSTRUCTION8086(JNO),
+    STRING_INSTRUCTION8086(JB),
+    STRING_INSTRUCTION8086(JNB),
+    STRING_INSTRUCTION8086(JZ),
+    STRING_INSTRUCTION8086(JNZ),
+    STRING_INSTRUCTION8086(JBE),
+    STRING_INSTRUCTION8086(JNBE),
+    STRING_INSTRUCTION8086(JS),
+    STRING_INSTRUCTION8086(JNS),
+    STRING_INSTRUCTION8086(JP),
+    STRING_INSTRUCTION8086(JNP),
+    STRING_INSTRUCTION8086(JL),
+    STRING_INSTRUCTION8086(JNL),
+    STRING_INSTRUCTION8086(JLE),
+    STRING_INSTRUCTION8086(JNLE),
+    STRING_INSTRUCTION8086(TEST),
+    STRING_INSTRUCTION8086(LEA),
+    STRING_INSTRUCTION8086(PUSH),
+    STRING_INSTRUCTION8086(POP),
+    STRING_INSTRUCTION8086(NOP),
+    STRING_INSTRUCTION8086(XCHG),
+    STRING_INSTRUCTION8086(CBW),
+    STRING_INSTRUCTION8086(CWD),
+    STRING_INSTRUCTION8086(JMP),
+    STRING_INSTRUCTION8086(WAIT),
+    STRING_INSTRUCTION8086(PUSHF),
+    STRING_INSTRUCTION8086(POPF),
+    STRING_INSTRUCTION8086(SAHF),
+    STRING_INSTRUCTION8086(LAHF),
+    STRING_INSTRUCTION8086(MOV),
+    STRING_INSTRUCTION8086(MOVS),
+    STRING_INSTRUCTION8086(CMPS),
+    STRING_INSTRUCTION8086(STOS),
+    STRING_INSTRUCTION8086(LODS),
+    STRING_INSTRUCTION8086(SCAS),
+    STRING_INSTRUCTION8086(RET),
+    STRING_INSTRUCTION8086(LES),
+    STRING_INSTRUCTION8086(LDS),
+    STRING_INSTRUCTION8086(INT_3),
+    STRING_INSTRUCTION8086(INT),
+    STRING_INSTRUCTION8086(INTO),
+    STRING_INSTRUCTION8086(IRET),
+    STRING_INSTRUCTION8086(ROL),
+    STRING_INSTRUCTION8086(ROR),
+    STRING_INSTRUCTION8086(RCL),
+    STRING_INSTRUCTION8086(RCR),
+    STRING_INSTRUCTION8086(SHL),
+    STRING_INSTRUCTION8086(SHR),
+    STRING_INSTRUCTION8086(SAR),
+    STRING_INSTRUCTION8086(AAM),
+    STRING_INSTRUCTION8086(SALC),
+    STRING_INSTRUCTION8086(AAD),
+    STRING_INSTRUCTION8086(XLAT),
+    STRING_INSTRUCTION8086(ESC),
+    STRING_INSTRUCTION8086(LOOPNE),
+    STRING_INSTRUCTION8086(LOOPE),
+    STRING_INSTRUCTION8086(LOOP),
+    STRING_INSTRUCTION8086(JCXZ),
+    STRING_INSTRUCTION8086(IN),
+    STRING_INSTRUCTION8086(OUT),
+    STRING_INSTRUCTION8086(CALL),
+    STRING_INSTRUCTION8086(REPNE),
+    STRING_INSTRUCTION8086(REP),
+    STRING_INSTRUCTION8086(LOCK),
+    STRING_INSTRUCTION8086(CMD),
+    STRING_INSTRUCTION8086(HLT),
+    STRING_INSTRUCTION8086(CMC),
+    STRING_INSTRUCTION8086(NOT),
+    STRING_INSTRUCTION8086(NEG),
+    STRING_INSTRUCTION8086(MUL),
+    STRING_INSTRUCTION8086(IMUL),
+    STRING_INSTRUCTION8086(DIV),
+    STRING_INSTRUCTION8086(IDIV),
+    STRING_INSTRUCTION8086(CLC),
+    STRING_INSTRUCTION8086(STC),
+    STRING_INSTRUCTION8086(CLI),
+    STRING_INSTRUCTION8086(STI),
+    STRING_INSTRUCTION8086(CLD),
+    STRING_INSTRUCTION8086(STD),
+    STRING_INSTRUCTION8086(INC),
+    STRING_INSTRUCTION8086(DEC)
+} string_instrution_id_8086;
 
 typedef enum encoder_x86 { // se especifica el formato a encodificar / descodificar las instrucciones
     ENCODER_IN_16bits,
@@ -1177,7 +1275,7 @@ typedef struct Instruction_info
 // tiene campo datos del 8086
 #define DATA_MASK_8086   (1 << 3)
 
-// el campo opcode tiene campo W
+// el es un prefijo
 #define MASK_PREFIX      (1 << 4)
 
 // usa registro-memoria de 16bits
@@ -1204,6 +1302,8 @@ typedef struct Instruction_info
 // tiene datos tttn, para instrucciones de tipo salto condicional, se usara el campo mod-reg-rm para almacenar el tttn obtenido del opcode
 #define TTTN_MASK     (1 << 12)
 
+#define STRING_INSTRU(num) (num  << 24)
+
 /*
  * El 8086 dispone de un byte de opcode maximo, donde se encuentra el Bit D y el bit W normalmente
  * El segundo byte suele codificar Mod/RM
@@ -1219,47 +1319,47 @@ typedef struct Instruction_info
  * el sexto byte codifica un dato alto
  * maximo 6 bytes por instruccion.
  */
-__attribute__((__section__(".instruccion"))) static uint16_t my_instruccion_8086[] = {
-    [0b00000000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(00 -> 0b00000000) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
-    [0b00000001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(01 -> 0b00000001) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
-    [0b00000010] = REG_MEM_8_MASK  | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(02 -> 0b00000010) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
-    [0b00000011] = REG_MEM_16_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+__attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086[] = {
+    [0b00000000] = REG_MEM_8_MASK  | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)), // opcode(00 -> 0b00000000) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00000001] = REG_MEM_16_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)), // opcode(01 -> 0b00000001) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00000010] = REG_MEM_8_MASK  | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)), // opcode(02 -> 0b00000010) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00000011] = REG_MEM_16_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)), // opcode(03 -> 0b00000011) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
 
     // add al, inmed16
-    [0b00000100] = INMED8_MASK,  // opcode(04 -> 0b00000011) -> (add) (data)
+    [0b00000100] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)),  // opcode(04 -> 0b00000011) -> (add) (data)
 
     // add ax, inmed16
-    [0b00000101] = INMED16_MASK, // opcode(05 -> 0b00000011) -> (add) (data low), (data high if W = 1)
+    [0b00000101] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)), // opcode(05 -> 0b00000011) -> (add) (data low), (data high if W = 1)
 
     // push es:
-    [0b00000110] = REG_SEG_MASK, // opcode(06 -> 0b00000110)
+    [0b00000110] = REG_SEG_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)), // opcode(06 -> 0b00000110)
 
     // pop es:
-    [0b00000111] = REG_SEG_MASK, // opcode(07 -> 0b00000111)
+    [0b00000111] = REG_SEG_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(POP)), // opcode(07 -> 0b00000111)
 
     // or reg8/mem8, reg8
-    [0b00001000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK, // opcode(08 -> 0b00001000)
+    [0b00001000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(OR)), // opcode(08 -> 0b00001000)
 
     // or reg16/mem16, reg16
-    [0b00001001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK, // opcode(09 -> 0b00001001)
+    [0b00001001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(OR)), // opcode(09 -> 0b00001001)
 
     // or reg8 ,reg8/mem8
-    [0b00001010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK, // opcode(0a -> 0b00001010)
+    [0b00001010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(OR)), // opcode(0a -> 0b00001010)
 
     // or reg16, reg16/mem16
-    [0b00001011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK, // opcode(0b -> 0b00001011)
+    [0b00001011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(OR)), // opcode(0b -> 0b00001011)
 
     // or al, inmed8
-    [0b00001100] = INMED8_MASK,  // opcode(0c -> 0b00001100) -> (or) (data)
+    [0b00001100] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(OR)),  // opcode(0c -> 0b00001100) -> (or) (data)
 
     // or al, inmed16
-    [0b00001101] = INMED16_MASK,  // opcode(0d -> 0b00001101) -> (or) (data high if W = 1)
+    [0b00001101] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(OR)),  // opcode(0d -> 0b00001101) -> (or) (data high if W = 1)
 
     // push es
-    [0b00001110] = REG_SEG_MASK,                            // opcode(0e -> 0b00001110)
+    [0b00001110] = REG_SEG_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),                            // opcode(0e -> 0b00001110)
 
     // pop cs -> https://www.righto.com/2023/07/undocumented-8086-instructions.html
-    [0b00001111] = REG_SEG_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(0f -> 0b00001111)
+    [0b00001111] = REG_SEG_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(POP)), // opcode(0f -> 0b00001111)
     /*
      * El código de operación 0F es el primer agujero en la tabla de códigos de operación. El
      * 8086 tiene instrucciones para insertar y extraer los cuatro registros de segmento, excepto
@@ -1312,48 +1412,201 @@ __attribute__((__section__(".instruccion"))) static uint16_t my_instruccion_8086
     //[0b00000100] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(04 -> 0b00000100) -> (add) (data), (data if w = 1)
     //[0b00000101] = DISP_HIGH_MASK | DATA_MASK_8086                 , // opcode(05 -> 0b00000101) -> (add) (data), (data if w = 1)
 
-    [0b00010000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(00 -> 0b00000000) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
-    [0b00010001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(01 -> 0b00000001) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
-    [0b00010010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(02 -> 0b00000010) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
-    [0b00010011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK, // opcode(03 -> 0b00000011) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00010000] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(ADC)), // opcode(00 -> 0b00000000) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00010001] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADC)), // opcode(01 -> 0b00000001) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00010010] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(ADC)), // opcode(02 -> 0b00000010) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
+    [0b00010011] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADC)), // opcode(03 -> 0b00000011) -> (adc) (mod, reg, r/m), (disp_low), (disp_high)
 
-    [0b00010100] = INMED8_MASK | DISP_HIGH_MASK | DATA_MASK_8086,                  // opcode(04 -> 0b00010100)  -> (add) (data), (data if w = 1)
-    [0b00010101] = INMED16_MASK | DISP_HIGH_MASK | DATA_MASK_8086,                  // opcode(04 -> 0b00010101)  -> (add) (data), (data if w = 1)
+    [0b00010100] = INMED8_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)),                  // opcode(04 -> 0b00010100)  -> (add) (data), (data if w = 1)
+    [0b00010101] = INMED16_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)),                  // opcode(04 -> 0b00010101)  -> (add) (data), (data if w = 1)
+
+    // push ss
+    [0x16] = REG_SEG_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),
+
+    // pop ss
+    [0x17] = REG_SEG_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
+    [0x18] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(SBB)),
+
+    [0x19] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(SBB)),
+
+    [0x1a] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(SBB)),
+
+    [0x1b] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(SBB)),
+
+    [0x1c] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(SBB)),
+
+    [0x1d] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(SBB)),
+
+    // push ds
+    [0x1e] = REG_SEG_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),
+
+    // pop ds
+    [0x1f] = REG_SEG_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
+    [0x20] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(AND)),
+
+    [0x21] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(AND)),
+
+    [0x22] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(AND)),
+
+    [0x23] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(AND)),
+
+    [0x24] = INMED8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(AND)),
+
+    [0x25] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(AND)),
+
+    [0x26] = MASK_PREFIX,
+
+    [0x27] = STRING_INSTRU(STRING_INSTRUCTION8086(DAA)),
+
+    [0x28] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(SUB)),
+
+    [0x29] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(SUB)),
+
+    [0x2a] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(SUB)),
+
+    [0x2b] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(SUB)),
+
+    [0x2c] = INMED8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(SUB)),
+
+    [0x2d] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(SUB)),
+
+    [0x2e] = MASK_PREFIX,
+
+    [0x2f] =  STRING_INSTRU(STRING_INSTRUCTION8086(DAS)),
+
+    [0x30] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(XOR)),
+
+    [0x31] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(XOR)),
+
+    [0x32] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(XOR)),
+
+    [0x33] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(XOR)),
+
+    [0x34] = INMED8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(XOR)),
+
+    [0x35] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(XOR)),
+
+    [0x36] = MASK_PREFIX,
+
+    [0x37] = STRING_INSTRU(STRING_INSTRUCTION8086(AAA)),
+
+    [0x38] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(CMP)),
+
+    [0x39] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(CMP)),
+
+    [0x3a] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_8_MASK  | STRING_INSTRU(STRING_INSTRUCTION8086(CMP)),
+
+    [0x3b] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(CMP)),
+
+    [0x3c] = INMED8_MASK,
+
+    [0x3d] = INMED16_MASK,
+
+    [0x3e] = MASK_PREFIX,
+
+    [0x3f] =  STRING_INSTRU(STRING_INSTRUCTION8086(AAS)),
+
+    [0x40] =  STRING_INSTRU(STRING_INSTRUCTION8086(INC)),
+
+    [0x41] = STRING_INSTRU(STRING_INSTRUCTION8086(INC)),
+
+    [0x42] = STRING_INSTRU(STRING_INSTRUCTION8086(INC)),
+
+    [0x43] = STRING_INSTRU(STRING_INSTRUCTION8086(INC)),
+
+    [0x44] = STRING_INSTRU(STRING_INSTRUCTION8086(INC)),
+
+    [0x45] = STRING_INSTRU(STRING_INSTRUCTION8086(INC)),
+
+    [0x46] = STRING_INSTRU(STRING_INSTRUCTION8086(INC)),
+
+    [0x47] = STRING_INSTRU(STRING_INSTRUCTION8086(INC)),
+
+    [0x48] = STRING_INSTRU(STRING_INSTRUCTION8086(DEC)),
+
+    [0x49] = STRING_INSTRU(STRING_INSTRUCTION8086(DEC)),
+
+    [0x4a] = STRING_INSTRU(STRING_INSTRUCTION8086(DEC)),
+
+    [0x4b] = STRING_INSTRU(STRING_INSTRUCTION8086(DEC)),
+
+    [0x4c] = STRING_INSTRU(STRING_INSTRUCTION8086(DEC)),
+
+    [0x4d] = STRING_INSTRU(STRING_INSTRUCTION8086(DEC)),
+
+    [0x4e] = STRING_INSTRU(STRING_INSTRUCTION8086(DEC)),
+
+    [0x4f] = STRING_INSTRU(STRING_INSTRUCTION8086(DEC)),
+
+    [0x50] = STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),
+
+    [0x51] = STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),
+
+    [0x52] = STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),
+
+    [0x53] = STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),
+
+    [0x54] = STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),
+
+    [0x55] = STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),
+
+    [0x56] = STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),
+
+    [0x57] = STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),
+
+    [0x58] = STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
+    [0x59] = STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
+    [0x5a] = STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
+    [0x5b] = STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
+    [0x5c] = STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
+    [0x5d] = STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
+    [0x5e] = STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
+    [0x5f] = STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
 
     // Jxx(saltos condicionales) (no documentados)
-    [0b01100000] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(60 -> 0b01100000) -> 0x60 (equivalent: 0x70) = JO
-    [0b01100001] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(61 -> 0b01100001) -> 0x61 (equivalent: 0x71) = JNO
-    [0b01100010] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(62 -> 0b01100010) -> 0x62 (equivalent: 0x72) = JC
-    [0b01100011] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(63 -> 0b01100011) -> 0x63 (equivalent: 0x73) = JAE
-    [0b01100100] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(64 -> 0b01100100) -> 0x64 (equivalent: 0x74) = JE
-    [0b01100101] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(65 -> 0b01100101) -> 0x65 (equivalent: 0x75) = JNZ
-    [0b01100110] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(66 -> 0b01100110) -> 0x66 (equivalent: 0x76) = JBE
-    [0b01100111] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(67 -> 0b01100111) -> 0x67 (equivalent: 0x77) = JA
-    [0b01101000] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(68 -> 0b01101000) -> 0x68 (equivalent: 0x78) = JS
-    [0b01101001] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(69 -> 0b01101001) -> 0x69 (equivalent: 0x79) = JNS
-    [0b01101010] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6a -> 0b01101010) -> 0x6A (equivalent: 0x7A) = JPE
-    [0b01101011] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6b -> 0b01101011) -> 0x6B (equivalent: 0x7B) = JNP
-    [0b01101100] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6c -> 0b01101100) -> 0x6C (equivalent: 0x7C) = JL
-    [0b01101101] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6d -> 0b01101101) -> 0x6D (equivalent: 0x7D) = JGE
-    [0b01101110] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6e -> 0b01101110) -> 0x6E (equivalent: 0x7E) = JLE
-    [0b01101111] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(6f -> 0b01101111) -> 0x6F (equivalent: 0x7F) = JG
+    [0b01100000] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JO)),    // opcode(60 -> 0b01100000) -> 0x60 (equivalent: 0x70) = JO
+    [0b01100001] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNO)),   // opcode(61 -> 0b01100001) -> 0x61 (equivalent: 0x71) = JNO
+    [0b01100010] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JB)),    // opcode(62 -> 0b01100010) -> 0x62 (equivalent: 0x72) = JC
+    [0b01100011] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNB)),   // opcode(63 -> 0b01100011) -> 0x63 (equivalent: 0x73) = JAE
+    [0b01100100] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JZ)),    // opcode(64 -> 0b01100100) -> 0x64 (equivalent: 0x74) = JE
+    [0b01100101] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNZ)),   // opcode(65 -> 0b01100101) -> 0x65 (equivalent: 0x75) = JNZ
+    [0b01100110] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JBE)),   // opcode(66 -> 0b01100110) -> 0x66 (equivalent: 0x76) = JBE
+    [0b01100111] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNBE)),  // opcode(67 -> 0b01100111) -> 0x67 (equivalent: 0x77) = JA
+    [0b01101000] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JS)),    // opcode(68 -> 0b01101000) -> 0x68 (equivalent: 0x78) = JS
+    [0b01101001] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNS)),   // opcode(69 -> 0b01101001) -> 0x69 (equivalent: 0x79) = JNS
+    [0b01101010] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JP)),    // opcode(6a -> 0b01101010) -> 0x6A (equivalent: 0x7A) = JPE
+    [0b01101011] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNP)),   // opcode(6b -> 0b01101011) -> 0x6B (equivalent: 0x7B) = JNP
+    [0b01101100] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JL)),    // opcode(6c -> 0b01101100) -> 0x6C (equivalent: 0x7C) = JL
+    [0b01101101] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNL)),   // opcode(6d -> 0b01101101) -> 0x6D (equivalent: 0x7D) = JGE
+    [0b01101110] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JLE)),   // opcode(6e -> 0b01101110) -> 0x6E (equivalent: 0x7E) = JLE
+    [0b01101111] = TTTN_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNLE)),  // opcode(6f -> 0b01101111) -> 0x6F (equivalent: 0x7F) = JG
     // Jxx(saltos condicionales) (documentados)
-    [0b01110000] = TTTN_MASK,                            // opcode(70 -> 0b01110000) -> 0x70 (equivalent: 0x60) = JO
-    [0b01110001] = TTTN_MASK,                            // opcode(71 -> 0b01110001) -> 0x71 (equivalent: 0x61) = JNO
-    [0b01110010] = TTTN_MASK,                            // opcode(72 -> 0b01110010) -> 0x72 (equivalent: 0x62) = JC
-    [0b01110011] = TTTN_MASK,                            // opcode(73 -> 0b01110011) -> 0x73 (equivalent: 0x63) = JAE
-    [0b01110100] = TTTN_MASK,                            // opcode(74 -> 0b01110100) -> 0x74 (equivalent: 0x64) = JE
-    [0b01110101] = TTTN_MASK,                            // opcode(75 -> 0b01110101) -> 0x75 (equivalent: 0x65) = JNZ
-    [0b01110110] = TTTN_MASK,                            // opcode(76 -> 0b01110110) -> 0x76 (equivalent: 0x66) = JBE
-    [0b01110111] = TTTN_MASK,                            // opcode(77 -> 0b01110111) -> 0x77 (equivalent: 0x67) = JA
-    [0b01111000] = TTTN_MASK,                            // opcode(78 -> 0b01111000) -> 0x78 (equivalent: 0x68) = JS
-    [0b01111001] = TTTN_MASK,                            // opcode(79 -> 0b01111001) -> 0x79 (equivalent: 0x69) = JNS
-    [0b01111010] = TTTN_MASK,                            // opcode(7a -> 0b01111010) -> 0x7A (equivalent: 0x6A) = JPE
-    [0b01111011] = TTTN_MASK,                            // opcode(7b -> 0b01111011) -> 0x7B (equivalent: 0x6B) = JNP
-    [0b01111100] = TTTN_MASK,                            // opcode(7c -> 0b01111100) -> 0x7C (equivalent: 0x6C) = JL
-    [0b01111101] = TTTN_MASK,                            // opcode(7d -> 0b01111101) -> 0x7D (equivalent: 0x6D) = JGE
-    [0b01111110] = TTTN_MASK,                            // opcode(7e -> 0b01111110) -> 0x7E (equivalent: 0x6E) = JLE
-    [0b01111111] = TTTN_MASK,                            // opcode(7f -> 0b01111111) -> 0x7F (equivalent: 0x6F) = JG
+    [0b01110000] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JO)),                               // opcode(70 -> 0b01110000) -> 0x70 (equivalent: 0x60) = JO
+    [0b01110001] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNO)),                              // opcode(71 -> 0b01110001) -> 0x71 (equivalent: 0x61) = JNO
+    [0b01110010] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JB)),                               // opcode(72 -> 0b01110010) -> 0x72 (equivalent: 0x62) = JC
+    [0b01110011] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNB)),                              // opcode(73 -> 0b01110011) -> 0x73 (equivalent: 0x63) = JAE
+    [0b01110100] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JZ)),                               // opcode(74 -> 0b01110100) -> 0x74 (equivalent: 0x64) = JE
+    [0b01110101] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNZ)),                              // opcode(75 -> 0b01110101) -> 0x75 (equivalent: 0x65) = JNZ
+    [0b01110110] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JBE)),                              // opcode(76 -> 0b01110110) -> 0x76 (equivalent: 0x66) = JBE
+    [0b01110111] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNBE)),                             // opcode(77 -> 0b01110111) -> 0x77 (equivalent: 0x67) = JA
+    [0b01111000] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JS)),                               // opcode(78 -> 0b01111000) -> 0x78 (equivalent: 0x68) = JS
+    [0b01111001] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNS)),                              // opcode(79 -> 0b01111001) -> 0x79 (equivalent: 0x69) = JNS
+    [0b01111010] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JP)),                               // opcode(7a -> 0b01111010) -> 0x7A (equivalent: 0x6A) = JPE
+    [0b01111011] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNP)),                              // opcode(7b -> 0b01111011) -> 0x7B (equivalent: 0x6B) = JNP
+    [0b01111100] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JL)),                               // opcode(7c -> 0b01111100) -> 0x7C (equivalent: 0x6C) = JL
+    [0b01111101] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNL)),                              // opcode(7d -> 0b01111101) -> 0x7D (equivalent: 0x6D) = JGE
+    [0b01111110] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JLE)),                              // opcode(7e -> 0b01111110) -> 0x7E (equivalent: 0x6E) = JLE
+    [0b01111111] = TTTN_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(JNLE)),                             // opcode(7f -> 0b01111111) -> 0x7F (equivalent: 0x6F) = JG
 
 
     // tiene Mod/rm, pero se usa para identificar varias instrucciones atraves del campo reg
@@ -1365,29 +1618,166 @@ __attribute__((__section__(".instruccion"))) static uint16_t my_instruccion_8086
     // instruccion reg16/mem16, inmed8
     [0b10000011] = REG_MEM_16_MASK | INMED8_MASK     | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | DATA_MASK_8086 | DATA_SX_MASK, // opcode(83 -> 0b10000011) -> (add/adc) (mod, reg, r/m), (disp_low), (disp_high), (data), (data if s = W=01)
 
+    [0x84] = STRING_INSTRU(STRING_INSTRUCTION8086(TEST)),
+
+    [0x85] = STRING_INSTRU(STRING_INSTRUCTION8086(TEST)),
+
+    [0x86] = STRING_INSTRU(STRING_INSTRUCTION8086(XCHG)),
+
+    [0x87] = STRING_INSTRU(STRING_INSTRUCTION8086(XCHG)),
+
+    [0x88] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0x89] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0x8a] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0x8b] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0x8c] = 0x0,
+
+    [0x8d] = STRING_INSTRU(STRING_INSTRUCTION8086(LEA)),
+
+    [0x8e] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0x8f] = STRING_INSTRU(STRING_INSTRUCTION8086(POP)),
+
+    [0x90] = STRING_INSTRU(STRING_INSTRUCTION8086(NOP)),
+
+    [0x91] = STRING_INSTRU(STRING_INSTRUCTION8086(XCHG)),
+
+    [0x92] = STRING_INSTRU(STRING_INSTRUCTION8086(XCHG)),
+
+    [0x93] = STRING_INSTRU(STRING_INSTRUCTION8086(XCHG)),
+
+    [0x94] = STRING_INSTRU(STRING_INSTRUCTION8086(XCHG)),
+
+    [0x95] = STRING_INSTRU(STRING_INSTRUCTION8086(XCHG)),
+
+    [0x96] = STRING_INSTRU(STRING_INSTRUCTION8086(XCHG)),
+
+    [0x97] = STRING_INSTRU(STRING_INSTRUCTION8086(XCHG)),
+
+    [0x98] = STRING_INSTRU(STRING_INSTRUCTION8086(CBW)),
+
+    [0x99] = STRING_INSTRU(STRING_INSTRUCTION8086(CWD)),
+
+    [0x9a] = STRING_INSTRU(STRING_INSTRUCTION8086(CALL)),
+
+    [0x9b] = STRING_INSTRU(STRING_INSTRUCTION8086(WAIT)),
+
+    [0x9c] = STRING_INSTRU(STRING_INSTRUCTION8086(PUSHF)),
+
+    [0x9d] = STRING_INSTRU(STRING_INSTRUCTION8086(POPF)),
+
+    [0x9e] = STRING_INSTRU(STRING_INSTRUCTION8086(SAHF)),
+
+    [0x9f] = STRING_INSTRU(STRING_INSTRUCTION8086(LAHF)),
+
+    [0xa0] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xa1] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xa2] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xa3] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xa4] = STRING_INSTRU(STRING_INSTRUCTION8086(MOVS)),
+
+    [0xa5] = STRING_INSTRU(STRING_INSTRUCTION8086(MOVS)),
+
+    [0xa6] = STRING_INSTRU(STRING_INSTRUCTION8086(CMPS)),
+
+    [0xa7] = STRING_INSTRU(STRING_INSTRUCTION8086(CMPS)),
+
+    [0xa8] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(TEST)),
+
+    [0xa9] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(TEST)),
+
+    [0xaa] = STRING_INSTRU(STRING_INSTRUCTION8086(STOS)),
+
+    [0xab] = STRING_INSTRU(STRING_INSTRUCTION8086(STOS)),
+
+    [0xac] = STRING_INSTRU(STRING_INSTRUCTION8086(LODS)),
+
+    [0xad] = STRING_INSTRU(STRING_INSTRUCTION8086(LODS)),
+
+    [0xae] = STRING_INSTRU(STRING_INSTRUCTION8086(SCAS)),
+
+    [0xaf] = STRING_INSTRU(STRING_INSTRUCTION8086(SCAS)),
+
+    [0xb0] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xb1] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xb2] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xb3] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xb4] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xb5] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xb6] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xb7] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xb8] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xb9] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xba] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xbb] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xbc] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xbd] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xbe] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xbf] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
     // ret near inmed16, es la misma que C2
-    [0b11000000] = INMED16_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(192 -> 0b11000000) -> 0xC0 (equivalent: 0xC2) = ret near inmed16
+    [0b11000000] = INMED16_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(RET)), // opcode(192 -> 0b11000000) -> 0xC0 (equivalent: 0xC2) = ret near inmed16
 
     // ret ( no documentada)
-    [0b11000001] = UNDOCUMENTED_OPCODE_MASK,                // opcode(193 -> 0b11000001) -> 0xC1 (equivalent: 0xC3) = ret
+    [0b11000001] = UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(RET)),                // opcode(193 -> 0b11000001) -> 0xC1 (equivalent: 0xC3) = ret
 
     // ret near inmed16, es la misma que C0
-    [0b11000010] = INMED16_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(194 -> 0b11000010) -> 0xC2 (equivalent: 0xC0) = ret near inmed16
+    [0b11000010] = INMED16_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(RET)), // opcode(194 -> 0b11000010) -> 0xC2 (equivalent: 0xC0) = ret near inmed16
 
     // ret ( documentada ), no tiene flags
-    [0b11000011] = 0,                                       // opcode(195 -> 0b11000011) -> 0xC3 (equivalent: 0xC1) = ret
+    [0b11000011] =  STRING_INSTRU(STRING_INSTRUCTION8086(RET)),                                          // opcode(195 -> 0b11000011) -> 0xC3 (equivalent: 0xC1) = ret
+
+    [0xc4] = STRING_INSTRU(STRING_INSTRUCTION8086(LES)),
+
+    [0xc5] = STRING_INSTRU(STRING_INSTRUCTION8086(LDS)),
+
+    [0xc6] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
+
+    [0xc7] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)),
 
     // ret far inmed16, es la misma que CA
-    [0b11001000] = INMED16_MASK | UNDOCUMENTED_OPCODE_MASK, // opcode(200 -> 0b11001000) -> 0xC8 (equivalent: 0xCA) = ret far inmed16
+    [0b11001000] = INMED16_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(RET)), // opcode(200 -> 0b11001000) -> 0xC8 (equivalent: 0xCA) = ret far inmed16
 
     // ret far ( no documentada)
-    [0b11001001] = UNDOCUMENTED_OPCODE_MASK,                // opcode(201 -> 0b11001001) -> 0xC9 (equivalent: 0xCB) = ret far
+    [0b11001001] = UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(RET)),                // opcode(201 -> 0b11001001) -> 0xC9 (equivalent: 0xCB) = ret far
 
     // ret far inmed16, es la misma que C8
-    [0b11001010] = INMED16_MASK,                            // opcode(202 -> 0b11001010) -> 0xCA (equivalent: 0xC8) = ret far inmed16
+    [0b11001010] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(RET)),                            // opcode(202 -> 0b11001010) -> 0xCA (equivalent: 0xC8) = ret far inmed16
 
     // ret far (documentada)
-    [0b11001011] = 0,                                       // opcode(203 -> 0b11001011) -> 0xCB (equivalent: 0xC9) = ret far
+    [0b11001011] = 0 | STRING_INSTRU(STRING_INSTRUCTION8086(RET)),                                       // opcode(203 -> 0b11001011) -> 0xCB (equivalent: 0xC9) = ret far
+
+    [0xcc] = STRING_INSTRU(STRING_INSTRUCTION8086(INT_3)),
+
+    [0xcd] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(INT)),
+
+    [0xce] = STRING_INSTRU(STRING_INSTRUCTION8086(INTO)),
+
+    [0xcf] = STRING_INSTRU(STRING_INSTRUCTION8086(IRET)),
+
 
     // rol/ror/rcl/rcr/shl/shr/shr/sar reg8/mem8, 1
     // cuando el segundo byte se codifica como 110 en reg, se transforma en una instruccion no documentada
@@ -1458,15 +1848,78 @@ __attribute__((__section__(".instruccion"))) static uint16_t my_instruccion_8086
      */
     [0b11010011] = MOD_RM_REG_MASK | DISP_LOW_MASK,         // opcode(D3 -> 0b11010011)
 
+    [0xd4] = STRING_INSTRU(STRING_INSTRUCTION8086(AAM)),
+
+    [0xd5] = STRING_INSTRU(STRING_INSTRUCTION8086(AAD)),
+
     // SALC (SET Carry flag to AL), instruccion no documentada
-    [0b11010110] = 0,                                       // opcode(d6 -> 0b11010110) -> 0xD6
+    [0b11010110] = STRING_INSTRU(STRING_INSTRUCTION8086(SALC)),                                       // opcode(d6 -> 0b11010110) -> 0xD6
+
+    [0xd7] = STRING_INSTRU(STRING_INSTRUCTION8086(XLAT)),
+
+    [0xd8] = 0x0,
+
+    [0xd9] = 0x0,
+
+    [0xda] = 0x0,
+
+    [0xdb] = 0x0,
+
+    [0xdc] = 0x0,
+
+    [0xdd] = 0x0,
+
+    [0xde] = 0x0,
+
+    [0xdf] = 0x0,
+
+    [0xe0] = STRING_INSTRU(STRING_INSTRUCTION8086(LOOPNE)),
+
+    [0xe1] = STRING_INSTRU(STRING_INSTRUCTION8086(LOOPE)),
+
+    [0xe2] = STRING_INSTRU(STRING_INSTRUCTION8086(LOOP)),
+
+    [0xe3] = STRING_INSTRU(STRING_INSTRUCTION8086(JCXZ)),
+
+    [0xe4] = STRING_INSTRU(STRING_INSTRUCTION8086(IN)) | INMED8_MASK,
+
+    [0xe5] = STRING_INSTRU(STRING_INSTRUCTION8086(IN)) | INMED8_MASK,
+
+    [0xe6] = STRING_INSTRU(STRING_INSTRUCTION8086(OUT)) | INMED8_MASK,
+
+    [0xe7] = STRING_INSTRU(STRING_INSTRUCTION8086(OUT)) | INMED8_MASK,
+
+    [0xe8] =  STRING_INSTRU(STRING_INSTRUCTION8086(CALL)) | 0x0,
+
+    [0xe9] =  STRING_INSTRU(STRING_INSTRUCTION8086(JMP)),
+
+    [0xea] = STRING_INSTRU(STRING_INSTRUCTION8086(JMP)),
+
+    [0xeb] = STRING_INSTRU(STRING_INSTRUCTION8086(JMP)),
+
+    [0xec] = STRING_INSTRU(STRING_INSTRUCTION8086(IN)),
+
+    [0xed] = STRING_INSTRU(STRING_INSTRUCTION8086(IN)),
+
+    [0xee] = STRING_INSTRU(STRING_INSTRUCTION8086(OUT)),
+
+    [0xef] = STRING_INSTRU(STRING_INSTRUCTION8086(OUT)),
+
 
     // prefijo LOCK (documentado)
-    [0b11110000] = MASK_PREFIX,                             // opcode(f0 -> 0b11110000) -> 0xF0 (equivalent: 0xF1) = prefijo LOCK
+    [0b11110000] = STRING_INSTRU(STRING_INSTRUCTION8086(LOCK)) | MASK_PREFIX,                             // opcode(f0 -> 0b11110000) -> 0xF0 (equivalent: 0xF1) = prefijo LOCK
 
     // prefijo LOCK (no documentado)
-    [0b11110001] = UNDOCUMENTED_OPCODE_MASK | MASK_PREFIX,  // opcode(f1 -> 0b11110001) -> 0xF1 (equivalent: 0xF0) = prefijo LOCK
+    [0b11110001] =STRING_INSTRU(STRING_INSTRUCTION8086(LOCK)) | UNDOCUMENTED_OPCODE_MASK | MASK_PREFIX,  // opcode(f1 -> 0b11110001) -> 0xF1 (equivalent: 0xF0) = prefijo LOCK
 
+    [0xf2] = STRING_INSTRU(STRING_INSTRUCTION8086(REPNE)),
+
+    [0xf3] = STRING_INSTRU(STRING_INSTRUCTION8086(REP)),
+
+    [0xf4] = STRING_INSTRU(STRING_INSTRUCTION8086(HLT)),
+
+    [0xf5] = STRING_INSTRU(STRING_INSTRUCTION8086(CMD)),
+    
     // test/not/neg/mul/imul/div/idiv/ reg8/mem8
     /*
      * Cuando reg es 001, la instruccion se transforma en una instruccion no documentada
@@ -1480,6 +1933,18 @@ __attribute__((__section__(".instruccion"))) static uint16_t my_instruccion_8086
      * la cual equivale a la misma que reg == 000 en este caso
      */
     [0b11110111] = MOD_RM_REG_MASK | DISP_LOW_MASK,
+
+    [0xf8] = STRING_INSTRU(STRING_INSTRUCTION8086(CLC)),
+
+    [0xf9] = STRING_INSTRU(STRING_INSTRUCTION8086(STC)),
+
+    [0xfa] = STRING_INSTRU(STRING_INSTRUCTION8086(CLI)),
+
+    [0xfb] = STRING_INSTRU(STRING_INSTRUCTION8086(STI)),
+
+    [0xfc] = STRING_INSTRU(STRING_INSTRUCTION8086(CLD)),
+
+    [0xfd] = STRING_INSTRU(STRING_INSTRUCTION8086(STD)),
 
     // inc/dec reg8/mem8
     /*

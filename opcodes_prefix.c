@@ -135,6 +135,37 @@ int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instru
 }
 #include "./print_structs_format.h"
 
+void print_flags(uint16_t flags) {
+    if (flags == 0) {
+        printf("NONE_FLAGS");}
+    if (DISP_LOW_MASK    & flags){
+        printf("DISP_LOW_MASK | ");}
+    if (DISP_HIGH_MASK   & flags){
+        printf("DISP_HIGH_MASK | ");}
+    if (DATA_MASK_8086   & flags){
+        printf("DATA_MASK_8086 | ");}
+    if (MASK_PREFIX & flags){
+        printf("MASK_PREFIX | ");}
+    if (REG_MEM_16_MASK & flags){
+        printf("REG_MEM_16_MASK | ");}
+    if (INMED8_MASK & flags){
+        printf("INMED8_MASK | ");}
+    if (DATA_SX_MASK & flags){
+        printf("DATA_SX_MASK | ");}
+    if (REG_MEM_8_MASK & flags){
+        printf("REG_MEM_8_MASK | ");}
+    if (INMED16_MASK & flags){
+        printf("INMED16_MASK | ");}
+    if (REG_SEG_MASK & flags){
+        printf("REG_SEG_MASK | ");}
+    if (UNDOCUMENTED_OPCODE_MASK & flags){
+        printf("UNDOCUMENTED_OPCODE_MASK | ");}
+    if (TTTN_MASK & flags){
+        printf("TTTN_MASK ");}
+
+    printf("\n");
+}
+
 void print_Instruction_info(Instruction_info* instruction, encoder_x86 encode){
     printf("Instruction_info->flags %04hx\n", instruction->flags);
     printf("instruction->opcode1.opcode_byte.byte %02x\n", instruction->opcode1.opcode_byte.byte);
@@ -153,26 +184,7 @@ void print_Instruction_info(Instruction_info* instruction, encoder_x86 encode){
         printf("\treg %02x\n", instruction->Mod_rm.fields.reg);
         printf("\tR_M %02x\n", instruction->Mod_rm.fields.R_M);
     }
-    if (DISP_LOW_MASK    & instruction->flags){
-        printf("DISP_LOW_MASK\n");}
-    if (DISP_HIGH_MASK   & instruction->flags){
-        printf("DISP_HIGH_MASK\n");}
-    if (DATA_MASK_8086   & instruction->flags){
-        printf("DATA_MASK_8086\n");}
-    if (MASK_PREFIX & instruction->flags){
-        printf("MASK_PREFIX\n");}
-    if (REG_MEM_16_MASK & instruction->flags){
-        printf("REG_MEM_16_MASK\n");}
-    if (INMED8_MASK & instruction->flags){
-        printf("INMED8_MASK\n");}
-    if (DATA_SX_MASK & instruction->flags){
-        printf("DATA_SX_MASK\n");}
-    if (REG_MEM_8_MASK & instruction->flags){
-        printf("REG_MEM_8_MASK\n");}
-    if (INMED16_MASK & instruction->flags){
-        printf("INMED16_MASK\n");}
-    if (REG_SEG_MASK & instruction->flags){
-        printf("REG_SEG_MASK\n");}
+    print_flags(instruction->flags);
     
 
     printf("instruction->flags_prefix %02x\n", instruction->flags_prefix);    
@@ -181,5 +193,126 @@ void print_Instruction_info(Instruction_info* instruction, encoder_x86 encode){
     }
 }
 
+static char *get_string_instruction_by_id_8086(string_instrution_id_8086 id) {
+    /*
+     * 
+     * Retorna el string de la instruccion correspondiente a la id string.
+     * Se uso en este caso un array para ingresar los valores, en lugar de un switch case
+     * que retornara un string por cuestiones de optimizacion. El switch case generara
+     * un caso por instruccion agregada. Cada case genera este codigo ensamblador:
+     * 
+     * loc_140003061:          ; jumptable 0000000140002FAE case 7
+     * lea     rax, aEdi_0     ; "aaa"
+     * jmp     loc_140002FB7
+     * 
+     * Lo que quiere decir que con lea se carga el string a devolver y con jmp se salta a la parte de la funcion
+     * donde se retorna, por lo tanto 2 instrucciones por caso por 150 instrucciones corresponde a 300 instrucciones
+     * assembly para devolver el string correspondiente. el metodo del array es mas eficiente en codigo generado
+     * pues solo se necesita verificar los limites antes de acceder a retornar el valor del string
+     * 
+     */
+    static char *strings[] = {
+        [STRING_INSTRUCTION8086(ADD)]   = "ADD",
+        [STRING_INSTRUCTION8086(OR)]    = "OR",
+        [STRING_INSTRUCTION8086(ADC)]   = "ADC",
+        [STRING_INSTRUCTION8086(SBB)]   = "SBB",
+        [STRING_INSTRUCTION8086(AND)]   = "AND",
+        [STRING_INSTRUCTION8086(DAA)]   = "DAA",
+        [STRING_INSTRUCTION8086(SUB)]   = "SUB",
+        [STRING_INSTRUCTION8086(DAS)]   = "DAS",
+        [STRING_INSTRUCTION8086(XOR)]   = "XOR",
+        [STRING_INSTRUCTION8086(AAA)]   = "AAA",
+        [STRING_INSTRUCTION8086(CMP)]   = "CMP",
+        [STRING_INSTRUCTION8086(AAS)]   = "AAS",
+        [STRING_INSTRUCTION8086(JO)]    = "JO",
+        [STRING_INSTRUCTION8086(JNO)]   = "JNO",
+        [STRING_INSTRUCTION8086(JB)]    = "JB",
+        [STRING_INSTRUCTION8086(JNB)]   = "JNB",
+        [STRING_INSTRUCTION8086(JZ)]    = "JZ",
+        [STRING_INSTRUCTION8086(JNZ)]   = "JNZ",
+        [STRING_INSTRUCTION8086(JBE)]   = "JBE",
+        [STRING_INSTRUCTION8086(JNBE)]  = "JNBE",
+        [STRING_INSTRUCTION8086(JS)]    = "JS",
+        [STRING_INSTRUCTION8086(JNS)]   = "JNS",
+        [STRING_INSTRUCTION8086(JP)]    = "JP",
+        [STRING_INSTRUCTION8086(JNP)]   = "JNP",
+        [STRING_INSTRUCTION8086(JL)]    = "JL",
+        [STRING_INSTRUCTION8086(JNL)]   = "JNL",
+        [STRING_INSTRUCTION8086(JLE)]   = "JLE",
+        [STRING_INSTRUCTION8086(JNLE)]  = "JNLE",
+        [STRING_INSTRUCTION8086(TEST)]  = "TEST",
+        [STRING_INSTRUCTION8086(LEA)]   = "LEA",
+        [STRING_INSTRUCTION8086(PUSH)]  = "PUSH",
+        [STRING_INSTRUCTION8086(POP)]   = "POP",
+        [STRING_INSTRUCTION8086(NOP)]   = "NOP",
+        [STRING_INSTRUCTION8086(XCHG)]  = "XCHG",
+        [STRING_INSTRUCTION8086(CBW)]   = "CBW",
+        [STRING_INSTRUCTION8086(CWD)]   = "CWD",
+        [STRING_INSTRUCTION8086(CALL)]  = "CALL",
+        [STRING_INSTRUCTION8086(WAIT)]  = "WAIT",
+        [STRING_INSTRUCTION8086(PUSHF)] = "PUSHF",
+        [STRING_INSTRUCTION8086(POPF)]  = "POPF",
+        [STRING_INSTRUCTION8086(SAHF)]  = "SAHF",
+        [STRING_INSTRUCTION8086(LAHF)]  = "LAHF",
+        [STRING_INSTRUCTION8086(MOV)]   = "MOV",
+        [STRING_INSTRUCTION8086(MOVS)]  = "MOVS",
+        [STRING_INSTRUCTION8086(CMPS)]  = "CMPS",
+        [STRING_INSTRUCTION8086(STOS)]  = "STOS",
+        [STRING_INSTRUCTION8086(LODS)]  = "LODS",
+        [STRING_INSTRUCTION8086(SCAS)]  = "SCAS",
+        [STRING_INSTRUCTION8086(RET)]   = "RET",
+        [STRING_INSTRUCTION8086(LES)]   = "LES",
+        [STRING_INSTRUCTION8086(LDS)]   = "LDS",
+        [STRING_INSTRUCTION8086(INT_3)] = "INT 3",
+        [STRING_INSTRUCTION8086(INT)]   = "INT",
+        [STRING_INSTRUCTION8086(INTO)]  = "INTO",
+        [STRING_INSTRUCTION8086(IRET)]  = "IRET",
+        [STRING_INSTRUCTION8086(ROL)]   = "ROL",
+        [STRING_INSTRUCTION8086(ROR)]   = "ROR",
+        [STRING_INSTRUCTION8086(RCL)]   = "RCL",
+        [STRING_INSTRUCTION8086(RCR)]   = "RCR",
+        [STRING_INSTRUCTION8086(SHL)]   = "SHL",
+        [STRING_INSTRUCTION8086(SHR)]   = "SHR",
+        [STRING_INSTRUCTION8086(SAR)]   = "SAR",
+        [STRING_INSTRUCTION8086(AAM)]   = "AAM",
+        [STRING_INSTRUCTION8086(SALC)]  = "SALC",
+        [STRING_INSTRUCTION8086(JMP)] = "JMP",
+        [STRING_INSTRUCTION8086(AAD)]   = "AAD",
+        [STRING_INSTRUCTION8086(XLAT)]  = "XLAT",
+        [STRING_INSTRUCTION8086(CLD)] = "CLD",
+        [STRING_INSTRUCTION8086(ESC)]   = "ESC",
+        [STRING_INSTRUCTION8086(LOOPNE)]    = "LOOPNE",
+        [STRING_INSTRUCTION8086(LOOPE)] = "LOOPE",
+        [STRING_INSTRUCTION8086(LOOP)] = "LOOP",
+        [STRING_INSTRUCTION8086(JCXZ)]  = "JCXZ",
+        [STRING_INSTRUCTION8086(IN)]    = "IN",
+        [STRING_INSTRUCTION8086(OUT)]   = "OUT",
+        [STRING_INSTRUCTION8086(REPNE)] = "REPNE",
+        [STRING_INSTRUCTION8086(REP)]   = "REP",
+        [STRING_INSTRUCTION8086(LOCK)]  = "LOCK",
+        [STRING_INSTRUCTION8086(CMD)]   = "CMD",
+        [STRING_INSTRUCTION8086(HLT)]   = "HLT",
+        [STRING_INSTRUCTION8086(CMC)]   = "CMC",
+        [STRING_INSTRUCTION8086(NOT)]   = "NOT",
+        [STRING_INSTRUCTION8086(NEG)]   = "NEG",
+        [STRING_INSTRUCTION8086(MUL)]   = "MUL",
+        [STRING_INSTRUCTION8086(IMUL)]  = "IMUL",
+        [STRING_INSTRUCTION8086(DIV)]   = "DIV",
+        [STRING_INSTRUCTION8086(IDIV)]  = "IDIV",
+        [STRING_INSTRUCTION8086(CLC)]   = "CLC",
+        [STRING_INSTRUCTION8086(STC)]   = "STC",
+        [STRING_INSTRUCTION8086(CLI)]   = "CLI",
+        [STRING_INSTRUCTION8086(STI)]   = "STI",
+        [STRING_INSTRUCTION8086(CLD)]   = "CLD",
+        [STRING_INSTRUCTION8086(STD)]   = "STD",
+        [STRING_INSTRUCTION8086(INC)]   = "INC",
+        [STRING_INSTRUCTION8086(DEC)]    = "DEC"
+        
+    };
+
+    if (id >= STRING_INSTRUCTION8086(ADD) && id <= STRING_INSTRUCTION8086(DEC)) return strings[id];
+    else return "error - not exits this instruttion.";
+
+}
 
 #endif
