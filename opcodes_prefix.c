@@ -100,6 +100,10 @@ int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instru
     // posiblemente se trate de una instruccion como push/pop <reg_seg>:
     if (REG_SEG_MASK == instruction->flags) return 1;
 
+    if (instruction->flags & TTTN_MASK) {
+        instruction->displacement.ui8 = *code;
+        *position += 1; code++;
+    }
 
     if (instruction->flags & MOD_RM_REG_MASK){
         instruction->Mod_rm.byte = *code;
@@ -129,6 +133,10 @@ int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instru
     } else if (instruction->flags & DATA_SX_MASK){ // inmediato de 8bits a extender a 16
         instruction->immediate.ui8 =  *code;
         *position += 1; code++;
+    }
+    if ( instruction->flags & DIS_HIGH_MASK) {
+        instruction->displacement.ui16 = *(uint16_t*)(code);
+        *position += 2; code+=2;
     }
 
     return 1; // mientras no se llegue al final queda por desensamblar
@@ -162,6 +170,10 @@ void print_flags(uint16_t flags) {
         printf("UNDOCUMENTED_OPCODE_MASK | ");}
     if (TTTN_MASK & flags){
         printf("TTTN_MASK ");}
+    if (DIS_HIGH_MASK & flags){
+        printf("DIS_HIGH_MASK ");}
+        if (MOD_RM_REG_MASK & flags){
+        printf("MOD_RM_REG_MASK ");}
 
     printf("\n");
 }
