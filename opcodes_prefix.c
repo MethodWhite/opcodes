@@ -34,6 +34,59 @@
 
 #include "opcodes_prefix.h"
 
+int dissamble_8087(const uint8_t* start, const uint8_t* end, size_t* position, Instruction_info* instruction){
+    /*
+     * El 8087 es un coprocesador matematico que se conecta al 8086, asi que se ignoran los prefijos.
+     * el 8087(x87) no usaba registros de la misma manera que el 8086 lo hace, el x87 tiene 8 registros
+     * que van del st(0) al st(7), cada registro tiene 80 bits(16bits * 5) de largo.
+     * Los registros st(n) funciona en forma de pila, siendo ST(0) el tope de la pila, y ST(7) el fondo.
+     * Esto se le conoce como pila de 8 niveles.
+     * Por tanto se entiende que las instrucciones del x87 funcionan apilando(push), calculando, y desapilando(pop).
+     * Los registros tope (ST(0) y ST(1)) se pueden usar como operandos explicitos en memoria o registros,
+     * por lo que el registro ST(0) puede ser usado como acumulador. Tambien se puede intercambiar el contenido
+     * de los registros cib FXCH st(X), lo que hace que se pueda usar 7 registros libremente direccionales mas
+     * un acumulador
+     *
+     * Las instrucciones del x87 empiezan por 1101 1 MF x, donde MF son dos bits que indican el valor con el que trabajan
+     */
+    if (0 == (size_t)(end - start)) return 0;
+    uint8_t *code = start;
+    instruction->opcode1.opcode_byte.byte = *code;
+    *position += 1; code++;
+
+    // solo queremos obtener los ultimos 3 bytes del opcode de escape para poder saber
+    // que flags tiene el opcode 2 para el coprocesador, la tabla my_instruccion_8087_table contiene
+    // un puntero a una tabla de flags para la instruccion del 8087
+    volatile uint8_t index = instruction->opcode1.opcode_byte.byte & 0b00000111;
+    uint8_t *table    = my_instruccion_8087_table[index];
+    size_t size_table = my_instruccion_8087_table_sizes[index];
+    printf("table[%d]: %p size_table %zu\n", index, table, size_table);
+
+    // obtener las flags de coprocesador de la tabla con indice "index":
+    instruction->flags_x87 = table[*code];
+    instruction->Mod_rm.byte = *code; // obtener el Mod_rm
+    // se puede reciclar el campo Mod_rm para almacenar el opcode 2
+    *position += 1; code++;
+
+    if (instruction->flags_x87 & MOD_RM_REG_MASK){
+        //instruction->Mod_rm.byte = *code;
+        //*position += 1; code++;
+        if (instruction->Mod_rm.fields.mod == 0b00) {
+            // si 0b110 acceso directo 
+            if (instruction->Mod_rm.fields.R_M == 0b110) 
+            exit(0);
+        } else  if (instruction->Mod_rm.fields.mod == 0b01) {
+            instruction->displacement.ui8 =  *code;
+            *position += 1; code++;
+        } else if (instruction->Mod_rm.fields.mod == 0b10) {
+            instruction->displacement.ui16 =  *(uint16_t*)(code);
+            *position += 2; code+=2;
+        }
+    }
+
+    return 1;
+}
+
 int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instruction_info* instruction, encoder_x86 encoder){
     /*
      * i8086 - datos:
@@ -83,69 +136,79 @@ int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instru
     if (0 == (size_t)(end - start)) return 0;
     uint8_t *code = start;
 
-    switch (*code)
-    {
-        case Prefix_addr_size: 
-            instruction->flags_prefix |= FLAG_PREFIX_Prefix_addr_size; // se encontro prefijo 0x67
-            *position += 1; code++;
-            break;
-    
-        default: break;
-    }
-    instruction->flags = my_instruccion_8086[*code];
-    instruction->opcode1.opcode_byte.byte = *code;
-    *position += 1; code++;
+    // si el opcode actual, tiene el X87_MASK activo, entonces no se usa un procesamiento
+    // convencional, se debe usar el procesamiento de desensamblador para el 8087
+    if (my_instruccion_8086[*code] & X87_MASK) {
+        instruction->flags = my_instruccion_8086[*code];
+        return dissamble_8087(start, end, position, instruction);
+    } else {
 
-    // si la unica flag activa es que tiene registro de segmento, salir
-    // posiblemente se trate de una instruccion como push/pop <reg_seg>:
-    if (REG_SEG_MASK == instruction->flags) return 1;
-
-    if (instruction->flags & TTTN_MASK) {
-        instruction->displacement.ui8 = *code;
-        *position += 1; code++;
-    }
-
-    if (instruction->flags & MOD_RM_REG_MASK){
-        instruction->Mod_rm.byte = *code;
-        *position += 1; code++;
-        if (instruction->Mod_rm.fields.mod == 0b00) {
-            // si 0b110 acceso directo 
-            if (instruction->Mod_rm.fields.R_M == 0b110) 
-                exit(0);
-        } else {
-            if ((instruction->flags & DISP_LOW_MASK) || (instruction->flags & DISP_HIGH_MASK)){
-                if (instruction->Mod_rm.fields.mod == 0b01) {
-                instruction->displacement.ui8 =  *code;
+        switch (*code)
+        {
+            case Prefix_addr_size: 
+                instruction->flags_prefix |= FLAG_PREFIX_Prefix_addr_size; // se encontro prefijo 0x67
                 *position += 1; code++;
-                } else if (instruction->Mod_rm.fields.mod == 0b10) {
-                    instruction->displacement.ui16 =  *(uint16_t*)(code);
-                    *position += 2; code+=2;
+                break;
+        
+            default: break;
+        }
+        instruction->flags = my_instruccion_8086[*code];
+        instruction->opcode1.opcode_byte.byte = *code;
+        *position += 1; code++;
+
+        // si la unica flag activa es que tiene registro de segmento, salir
+        // posiblemente se trate de una instruccion como push/pop <reg_seg>:
+        if (REG_SEG_MASK == instruction->flags) return 1;
+
+        if (instruction->flags & TTTN_MASK) {
+            instruction->displacement.ui8 = *code;
+            *position += 1; code++;
+        }
+
+        if (instruction->flags & MOD_RM_REG_MASK){
+            instruction->Mod_rm.byte = *code;
+            *position += 1; code++;
+            if (instruction->Mod_rm.fields.mod == 0b00) {
+                // si 0b110 acceso directo 
+                if (instruction->Mod_rm.fields.R_M == 0b110) 
+                    exit(0);
+            } else {
+                if ((instruction->flags & DISP_LOW_MASK) || (instruction->flags & DISP_HIGH_MASK)){
+                    if (instruction->Mod_rm.fields.mod == 0b01) {
+                    instruction->displacement.ui8 =  *code;
+                    *position += 1; code++;
+                    } else if (instruction->Mod_rm.fields.mod == 0b10) {
+                        instruction->displacement.ui16 =  *(uint16_t*)(code);
+                        *position += 2; code+=2;
+                    }
                 }
             }
         }
-    }
-    if (instruction->flags & INMED8_MASK){
-        instruction->immediate.ui8 =  *code;
-        *position += 1; code++;
-    } else if (instruction->flags & INMED16_MASK) {
-        instruction->immediate.ui16 =  *(uint16_t*)(code);
-        *position += 2; code+=2;
-    } else if (instruction->flags & DATA_SX_MASK){ // inmediato de 8bits a extender a 16
-        instruction->immediate.ui8 =  *code;
-        *position += 1; code++;
-    }
-    if ( instruction->flags & DIS_HIGH_MASK) {
-        instruction->displacement.ui16 = *(uint16_t*)(code);
-        *position += 2; code+=2;
-    }
+        if (instruction->flags & INMED8_MASK){
+            instruction->immediate.ui8 =  *code;
+            *position += 1; code++;
+        } else if (instruction->flags & INMED16_MASK) {
+            instruction->immediate.ui16 =  *(uint16_t*)(code);
+            *position += 2; code+=2;
+        } else if (instruction->flags & DATA_SX_MASK){ // inmediato de 8bits a extender a 16
+            instruction->immediate.ui8 =  *code;
+            *position += 1; code++;
+        }
+        if ( instruction->flags & DIS_HIGH_MASK) {
+            instruction->displacement.ui16 = *(uint16_t*)(code);
+            *position += 2; code+=2;
+        }
 
-    return 1; // mientras no se llegue al final queda por desensamblar
+        return 1; // mientras no se llegue al final queda por desensamblar
+    }
 }
 #include "./print_structs_format.h"
 
+#define level_tab "\t"
+
 void print_flags(uint16_t flags) {
     if (flags == 0) {
-        printf("NONE_FLAGS");}
+        printf(level_tab"NONE_FLAGS");}
     if (DISP_LOW_MASK    & flags){
         printf("DISP_LOW_MASK | ");}
     if (DISP_HIGH_MASK   & flags){
@@ -172,14 +235,32 @@ void print_flags(uint16_t flags) {
         printf("TTTN_MASK ");}
     if (DIS_HIGH_MASK & flags){
         printf("DIS_HIGH_MASK ");}
-        if (MOD_RM_REG_MASK & flags){
+    if (MOD_RM_REG_MASK & flags){
         printf("MOD_RM_REG_MASK ");}
+    if (X87_MASK & flags){
+        printf("X87_MASK ");}
+
+    printf("\n");
+}
+
+void print_flags_x87(uint16_t flags) {
+    if (flags == 0) {
+        printf(level_tab"NONE_FLAGS_x87");}
+    if (ST_REGISTER    & flags){
+        printf("ST_REGISTER");}
+    if (REG_MEM_8_MASK    & flags){
+        printf("\t REG_MEM_8_MASK | ");}
+    if (REG_MEM_16_MASK    & flags){
+        printf("\t REG_MEM_16_MASK | ");}
+    if (MOD_RM_REG_MASK    & flags){
+        printf("MOD_RM_REG_MASK");}
 
     printf("\n");
 }
 
 void print_Instruction_info(Instruction_info* instruction, encoder_x86 encode){
     printf("Instruction_info->flags %04hx\n", instruction->flags);
+    print_flags(instruction->flags);
     printf("instruction->opcode1.opcode_byte.byte %02x\n", instruction->opcode1.opcode_byte.byte);
     if (instruction->flags == 0) {
         printf("NONE_FLAGS\n");
@@ -190,14 +271,18 @@ void print_Instruction_info(Instruction_info* instruction, encoder_x86 encode){
     free(string); string = get_addr_to_encoder_x86(instruction->immediate.ui64, encode);
     printf("instruction->immediate %s\n", string);
     free(string); string = NULL;
-    if (MOD_RM_REG_MASK  & instruction->flags){
+    if (MOD_RM_REG_MASK  & instruction->flags || X87_MASK & instruction->flags){
         printf("MOD_RM_REG_MASK = 0x%x\n", instruction->Mod_rm.byte);
         printf("\tmod %02x\n", instruction->Mod_rm.fields.mod);
         printf("\treg %02x\n", instruction->Mod_rm.fields.reg);
         printf("\tR_M %02x\n", instruction->Mod_rm.fields.R_M);
     }
-    print_flags(instruction->flags);
-    
+
+    // solo imprimir si es una instruccion para coprocesadores
+    if (X87_MASK & instruction->flags ){
+        printf("instruction->flags_x87 =  0x%x\n", instruction->flags_x87);
+        print_flags_x87(instruction->flags_x87);
+    }
 
     printf("instruction->flags_prefix %02x\n", instruction->flags_prefix);    
     if (FLAG_PREFIX_Prefix_addr_size  & instruction->flags_prefix){

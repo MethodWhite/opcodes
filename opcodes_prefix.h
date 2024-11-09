@@ -1255,7 +1255,8 @@ typedef struct Instruction_info
     data    immediate;    // immediato de 0, 1, 2, 4 bytes
 
     uint16_t flags;          // flags de la instruccion
-    uint8_t  flags_prefix;   // flags que indica prefijos de la instrucccion:
+    uint8_t  flags_prefix;   // flags que indica prefijos de la instrucccion
+    uint8_t  flags_x87;      // flags para las instrucciones del x87
     #define FLAG_PREFIX_Prefix_addr_size (1 << 0)
 } Instruction_info;
 
@@ -1276,7 +1277,7 @@ typedef struct Instruction_info
 #define DATA_MASK_8086   (1 << 3)
 
 // el es un prefijo
-#define MASK_PREFIX      (1 << 4)
+#define MASK_PREFIX      (1 << 8)
 
 // usa registro-memoria de 16bits
 #define REG_MEM_16_MASK  (1 << 5)
@@ -1288,7 +1289,7 @@ typedef struct Instruction_info
 #define DATA_SX_MASK     (1 << 7)
 
 // usa registro-memoria de 8bits
-#define REG_MEM_8_MASK   (1 << 8)
+#define REG_MEM_8_MASK   (1 << 4)
 
 // tiene datos inmediatos de 16bits
 #define INMED16_MASK     (1 << 9)
@@ -1302,7 +1303,11 @@ typedef struct Instruction_info
 // tiene datos tttn, para instrucciones de tipo salto condicional, se usara el campo mod-reg-rm para almacenar el tttn obtenido del opcode
 #define TTTN_MASK        (1 << 12)
 
+// tiene un desplazamiento alto por ejemplo 0xffff:0x1234, donde 0xffff es un "desplazamiento alto"
 #define DIS_HIGH_MASK    (1 << 13)
+
+// insica que la instruccion es un espace para usar coprocesadores como el x87
+#define X87_MASK         (1 << 14)
 
 // ingresar id de la instruccion string
 #define STRING_INSTRU(num) (num  << 24)
@@ -1322,6 +1327,161 @@ typedef struct Instruction_info
  * el sexto byte codifica un dato alto
  * maximo 6 bytes por instruccion.
  */
+
+// tambien se usara para el x87 decoder:
+//#define MOD_RM_REG_MASK  (1 << 0)
+
+// indica que el opcode para el coprocesador (segundo byte de la instruccion) tiene tres bits de opcode que
+// sirven para indicar que registro ST se quiere acceder usar modificar u otro
+#define ST_REGISTER (1 << 1)
+#define TABLE_INSTRUCTIONS_8087(name, number) name##_table_##number
+__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 0)[] = {
+    // [0xd8] = X87_MASK,
+
+    // fcom -> 0xd8 0xd0 - 0xd8 0xd7
+    [0b11010000] = ST_REGISTER, // fcom ST(0)
+    [0b11010001] = ST_REGISTER, // fcom ST(1)
+    [0b11010010] = ST_REGISTER, // fcom ST(2)
+    [0b11010011] = ST_REGISTER, // fcom ST(3)
+    [0b11010100] = ST_REGISTER, // fcom ST(4)
+    [0b11010101] = ST_REGISTER, // fcom ST(5)
+    [0b11010110] = ST_REGISTER, // fcom ST(6)
+    [0b11010111] = ST_REGISTER, // fcom ST(7)
+
+    // fcomp -> 0xd8 0xd8 - 0xd8 0xdf
+    [0b11011000] = ST_REGISTER, // fcomp ST(0)
+    [0b11011001] = ST_REGISTER, // fcomp ST(1)
+    [0b11011010] = ST_REGISTER, // fcomp ST(2)
+    [0b11011011] = ST_REGISTER, // fcomp ST(3)
+    [0b11011100] = ST_REGISTER, // fcomp ST(4)
+    [0b11011101] = ST_REGISTER, // fcomp ST(5)
+    [0b11011110] = ST_REGISTER, // fcomp ST(6)
+    [0b11011111] = ST_REGISTER, // fcomp ST(7)
+};
+__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 1)[] = {
+    // [0xd9] = X87_MASK,
+
+    // MF(00) -> 32bits real
+    // MF(01) -> 32bits interger
+    // MF(10) -> 64bits real
+    // MF(11) -> 16bits interger
+    // fld -> | escape | MF | 1 || mod | 000 | rm || disp |
+    // fld dword mod/rm
+    [0b00000000] = MOD_RM_REG_MASK,                   // D9 00          fld dword ptr [bx + si]
+    [0b00000001] = MOD_RM_REG_MASK,                   // D9 01          fld dword ptr [bx + di]
+    [0b00000010] = MOD_RM_REG_MASK,                   // D9 02          fld dword ptr [bp + si]
+    [0b00000011] = MOD_RM_REG_MASK,                   // D9 03          fld dword ptr [bp + di]
+    [0b00000100] = MOD_RM_REG_MASK,                   // D9 04          fld dword ptr [si]
+    [0b00000101] = MOD_RM_REG_MASK,                   // D9 05          fld dword ptr [di]
+    [0b00000110] = MOD_RM_REG_MASK | REG_MEM_16_MASK, // D9 06 12 34    fld dword ptr [mem16]
+    [0b00000111] = MOD_RM_REG_MASK,                   // D9 07          fld dword ptr [bx]
+
+    // REG_MEM_8_MASK se usa para indicar que usa un mem8
+    [0b01000000] = MOD_RM_REG_MASK | REG_MEM_8_MASK,   // D9 40 12       fld dword ptr [bx + si + mem8]
+    [0b01000001] = MOD_RM_REG_MASK | REG_MEM_8_MASK,   // D9 41 12       fld dword ptr [bx + di + mem8]
+    [0b01000010] = MOD_RM_REG_MASK | REG_MEM_8_MASK,   // D9 42 12       fld dword ptr [bp + si + mem8]
+    [0b01000011] = MOD_RM_REG_MASK | REG_MEM_8_MASK,   // D9 43 12       fld dword ptr [bp + di + mem8]
+    [0b01000100] = MOD_RM_REG_MASK | REG_MEM_8_MASK,   // D9 44 12       fld dword ptr [si + mem8]
+    [0b01000101] = MOD_RM_REG_MASK | REG_MEM_8_MASK,   // D9 45 12       fld dword ptr [di + mem8]
+    [0b01000110] = MOD_RM_REG_MASK | REG_MEM_8_MASK,   // D9 46 12       fld dword ptr [bp + mem8]
+    [0b01000111] = MOD_RM_REG_MASK | REG_MEM_8_MASK,   // D9 47 12       fld dword ptr [bx + mem8]
+
+    [0b10000000] = MOD_RM_REG_MASK | REG_MEM_16_MASK, // D9 80 34 12    fld dword ptr [bx + si + mem16]
+    [0b10000001] = MOD_RM_REG_MASK | REG_MEM_16_MASK, // D9 81 34 12    fld dword ptr [bx + di + mem16]
+    [0b10000010] = MOD_RM_REG_MASK | REG_MEM_16_MASK, // D9 82 34 12    fld dword ptr [bp + si + mem16]
+    [0b10000011] = MOD_RM_REG_MASK | REG_MEM_16_MASK, // D9 83 34 12    fld dword ptr [bp + di + mem16]
+    [0b10000100] = MOD_RM_REG_MASK | REG_MEM_16_MASK, // D9 84 34 12    fld dword ptr [si      + mem16]
+    [0b10000101] = MOD_RM_REG_MASK | REG_MEM_16_MASK, // D9 85 34 12    fld dword ptr [di      + mem16]
+    [0b10000110] = MOD_RM_REG_MASK | REG_MEM_16_MASK, // D9 86 34 12    fld dword ptr [bp      + mem16]
+    [0b10000111] = MOD_RM_REG_MASK | REG_MEM_16_MASK, // D9 87 34 12    fld dword ptr [bx      + mem16]
+
+    // fld reg -> 0xd9 0xd0 - 0xd9 0xd7
+    [0b11000000] = ST_REGISTER,     // D9 C0          fld st(0)
+    [0b11000001] = ST_REGISTER,     // D9 C1          fld st(1)
+    [0b11000010] = ST_REGISTER,     // D9 C2          fld st(2)
+    [0b11000011] = ST_REGISTER,     // D9 C3          fld st(3)
+    [0b11000100] = ST_REGISTER,     // D9 C4          fld st(4)
+    [0b11000101] = ST_REGISTER,     // D9 C5          fld st(5)
+    [0b11000110] = ST_REGISTER,     // D9 C6          fld st(6)
+    [0b11000111] = ST_REGISTER,     // D9 C7          fld st(7)
+
+    // fxch -> 0xd9 0xc8 - 0xd9 0xdf
+    [0b11001000] = ST_REGISTER, // ESC(fxch st(0))
+    [0b11001001] = ST_REGISTER, // ESC(fxch st(1))
+    [0b11001010] = ST_REGISTER, // ESC(fxch st(2))
+    [0b11001011] = ST_REGISTER, // ESC(fxch st(3))
+    [0b11001100] = ST_REGISTER, // ESC(fxch st(4))
+    [0b11001101] = ST_REGISTER, // ESC(fxch st(5))
+    [0b11001110] = ST_REGISTER, // ESC(fxch st(6))
+    [0b11001111] = ST_REGISTER, // ESC(fxch st(7))
+
+};
+__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 2)[] = {
+    // [0xda] = X87_MASK,
+};
+__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 3)[] = {
+    // [0xdb] = X87_MASK,
+
+};
+__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 4)[] = {
+    // [0xdc] = X87_MASK,
+
+};
+__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 5)[] = {
+    // [0xdd] = X87_MASK,
+    // 1101 1 MF(10) 1
+
+    // fld -> | escape | MF | 1 || mod | 000 | rm || disp |
+    // fld qword mod/rm
+    [0b00000000] = MOD_RM_REG_MASK,                   // DD 00          fld qword ptr [bx + si]
+    [0b00000001] = MOD_RM_REG_MASK,                   // DD 01          fld qword ptr [bx + di]
+    [0b00000010] = MOD_RM_REG_MASK,                   // DD 02          fld qword ptr [bp + si]
+    [0b00000011] = MOD_RM_REG_MASK,                   // DD 03          fld qword ptr [bp + di]
+    [0b00000100] = MOD_RM_REG_MASK,                   // DD 04          fld qword ptr [si]
+    [0b00000101] = MOD_RM_REG_MASK,                   // DD 05          fld qword ptr [di]
+    [0b00000110] = MOD_RM_REG_MASK | REG_MEM_16_MASK, // DD 06 12 34    fld qword ptr [mem16]
+    [0b00000111] = MOD_RM_REG_MASK,                   // DD 07          fld qword ptr [bx]
+
+    // fstp -> 0xdd 0xd8 - 0xdd 0xdf
+    [0b11011000] = ST_REGISTER, // ESC(fstp st(0))
+    [0b11011001] = ST_REGISTER, // ESC(fstp st(1))
+    [0b11011010] = ST_REGISTER, // ESC(fstp st(2))
+    [0b11011011] = ST_REGISTER, // ESC(fstp st(3))
+    [0b11011100] = ST_REGISTER, // ESC(fstp st(4))
+    [0b11011101] = ST_REGISTER, // ESC(fstp st(5))
+    [0b11011110] = ST_REGISTER, // ESC(fstp st(6))
+    [0b11011111] = ST_REGISTER, // ESC(fstp st(7))
+};
+__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 6)[] = {
+    // [0xde] = X87_MASK,
+
+};
+__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 7)[] = {
+    // [0xdf] = X87_MASK,
+
+};
+
+__attribute__((__section__(".instruccion"))) static uint8_t *my_instruccion_8087_table[] = {
+    TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 0),
+    TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 1),
+    TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 2),
+    TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 3),
+    TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 4),
+    TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 5),
+    TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 6),
+    TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 7)
+};
+__attribute__((__section__(".instruccion"))) static size_t my_instruccion_8087_table_sizes[] = {
+    sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 0))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 0)[0]),
+    sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 1))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 1)[0]),
+    sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 2))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 2)[0]),
+    sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 3))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 3)[0]),
+    sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 4))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 4)[0]),
+    sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 5))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 5)[0]),
+    sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 6))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 6)[0]),
+    sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 7))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 7)[0])
+};
+
 __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086[] = {
     [0b00000000] = REG_MEM_8_MASK  | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)), // opcode(00 -> 0b00000000) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
     [0b00000001] = REG_MEM_16_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)), // opcode(01 -> 0b00000001) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
@@ -1797,7 +1957,7 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
      * Clear OF (NV)
      * Byte operand and flags (not sure about AF) are modified as if the following instruction was executed: OR AL, 0FFh
      */
-    [0b11010000] = MOD_RM_REG_MASK | DISP_LOW_MASK,         // opcode(d0 -> 0b11010000)
+    [0b11010000] = REG_MEM_8_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK,         // opcode(d0 -> 0b11010000)
 
     /*
      * Documented equivalent: None
@@ -1815,7 +1975,7 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
      */
     // rol/ror/rcl/rcr/shl/shr/shr/sar reg16/mem16, 1
     // cuando el segundo byte se codifica como 110 en reg, se transforma en una instruccion no documentada
-    [0b11010001] = MOD_RM_REG_MASK | DISP_LOW_MASK,         // opcode(d1 -> 0b11010001)
+    [0b11010001] = REG_MEM_16_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK,         // opcode(d1 -> 0b11010001)
 
     // rol/ror/rcl/rcr/shl/shr/shr/sar reg8/mem8, cl
     // cuando el segundo byte se codifica como 110 en reg, se transforma en una instruccion no documentada
@@ -1830,7 +1990,7 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
      * D2h is the first byte of the byte-operand, CL-positions shift instructions (in the instruction matrix: “Shift b,v”). The type of shift is specified in bits 3 to 5 of the second byte, but it is not documented when these bits are 110b.
      * The destination operand can be specified, but the zero-test is always performed on CL.
     */
-    [0b11010010] = MOD_RM_REG_MASK | DISP_LOW_MASK,         // opcode(d2 -> 0b11010010)
+    [0b11010010] = REG_MEM_8_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK,         // opcode(d2 -> 0b11010010)
 
 
     // rol/ror/rcl/rcr/shl/shr/shr/sar reg16/mem16, cl
@@ -1847,32 +2007,44 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
      * D3h is the first byte of the word-operand, CL-positions shift instructions (in the instruction matrix: “Shift w,v”). The type of shift is specified in bits 3 to 5 of the second byte, but it is not documented when these bits are 110b.
      * The destination operand can be specified, but the zero-test is always performed on CL.
      */
-    [0b11010011] = MOD_RM_REG_MASK | DISP_LOW_MASK,         // opcode(D3 -> 0b11010011)
+    [0b11010011] = REG_MEM_16_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK,         // opcode(D3 -> 0b11010011)
 
     [0xd4] = STRING_INSTRU(STRING_INSTRUCTION8086(AAM)),
 
     [0xd5] = STRING_INSTRU(STRING_INSTRUCTION8086(AAD)),
 
     // SALC (SET Carry flag to AL), instruccion no documentada
+    /*
+     * El nombre SALC simplemente significa SET the Carry flag in AL (establecer el indicador de acarreo en AL). 
+     * Esta instrucción está categorizada como una instrucción propietaria de un solo byte no documentada.
+     * Intel afirma que se puede emular como una NOP. Esta instrucción, que difícilmente es una NOP,
+     * establece AL=FF si el indicador de acarreo está establecido (CF=1), o restablece AL=00 si el
+     * indicador de acarreo está despejado (CF=0). La mejor manera de emularla es como SBB AL,AL. SALC
+     * no cambia ningún indicador, mientras que SBB AL,AL sí lo hace. Esta instrucción es más útil para
+     * los programadores de lenguajes de alto nivel cuyos programas invocan lenguaje ensamblador y esperan
+     * que AL indique éxito o fracaso. Dado que es conveniente para los programas de lenguaje ensamblador
+     * devolver el estado en el CF, esta instrucción convertirá ese estado a una forma compatible con los
+     * lenguajes de alto nivel.
+     * A lo largo de los años, esta instrucción ha recibido muchos nombres por parte de varios descubridores. Originalmente le di el nombre SETCAL, pero el nombre más común que he visto impreso es SETALC. El nombre dado anteriormente, SALC, es un nombre oficial de Intel. Mientras examino el mapa de códigos de operación P6, siempre busco códigos de operación conocidos y no documentados. Después de examinar el mapa durante muchos minutos, mi paciencia y perseverancia dieron sus frutos. Encontré el código de operación y su nombre. El nombre que Intel le da a este código de operación es SALC. Esto indicaría que Intel planea documentar oficialmente esta instrucción, comenzando con el P6.
+     */
     [0b11010110] = STRING_INSTRU(STRING_INSTRUCTION8086(SALC)),                                       // opcode(d6 -> 0b11010110) -> 0xD6
 
     [0xd7] = STRING_INSTRU(STRING_INSTRUCTION8086(XLAT)),
 
-    [0xd8] = 0x0,
-
-    [0xd9] = 0x0,
-
-    [0xda] = 0x0,
-
-    [0xdb] = 0x0,
-
-    [0xdc] = 0x0,
-
-    [0xdd] = 0x0,
-
-    [0xde] = 0x0,
-
-    [0xdf] = 0x0,
+    /*
+     * Los codigo de operacion de un 0xd8 al 0xdf son instrucciones de escape (ESC), permite usar
+     * copreocesadores como el x87 conocido como 8087 para hacer operaciones aritmeticas, al ser un
+     * codigo de espace para coprocesadores, el conjunto de instrucciones se amplia pues al usar
+     * un escape se pueden usar instrucciones de coprocesador.
+     */
+    [0xd8] = X87_MASK,
+    [0xd9] = X87_MASK,
+    [0xda] = X87_MASK,
+    [0xdb] = X87_MASK,
+    [0xdc] = X87_MASK,
+    [0xdd] = X87_MASK,
+    [0xde] = X87_MASK,
+    [0xdf] = X87_MASK,
 
     [0xe0] = STRING_INSTRU(STRING_INSTRUCTION8086(LOOPNE)),
 

@@ -60,6 +60,7 @@ int main(){
     uint8_t instrucciones[] = {
         // instruccion ilegal:
         //0x67, 0x12, 0x04, 0x20, // adc al, [al+ah] // 0x04 codifica desplazamiento bajo
+        /*
         0x00, 0x80, 0x43, 0x65,         // add  byte ptr [bx + si + 0x6543], al
         0x01, 0xa8, 0x43, 0x65,         // add  word ptr [bx + si + 0x6543], bp
         0x02, 0x87, 0x34, 0x12,         // add  al, [bx+0x1234]
@@ -271,7 +272,6 @@ int main(){
         0xC2, 0x34, 0x12,               // ret near 0x1234
         0xc3,                           // ret
 
-        // no funca
         0xC4, 0x99, 0x21, 0x43,         // les  bx, ptr [bx + di + 0x4321]
         0xC5, 0x99, 0x21, 0x43,         // lds  bx, ptr [bx + di + 0x4321]
         0xC6, 0x00, 0xAA,               // mov  byte ptr [bx + si], 0xaa
@@ -287,7 +287,67 @@ int main(){
         0xCD, 0x12,                     // int 0x12
         0xce,                           // into
         0xCF,                           // iret
+        0xD0, 0x00,                     // rol byte ptr [bx + si], 1
+        0xD0, 0x99, 0x12, 0x34,         // rcr byte ptr [bx + di + 0x3412], 1
+        0xD1, 0x00,                     // rol word ptr [bx + si], 1
+        0xD1, 0x99, 0x12, 0x34,         // rcr word ptr [bx + di + 0x3412], 1
+        0xD2, 0x00,                     // rol byte ptr [bx + si], cl
+        0xD2, 0x99, 0x12, 0x34,         // rcr byte ptr [bx + di + 0x3412], cl
+        0xD3, 0x00,                     // rol word ptr [bx + si], cl
+        0xD3, 0x99, 0x12, 0x34,         // rcr word ptr [bx + di + 0x3412], cl
+        0xd4,                           // aam
+        0xd5,                           // aad
+        0xd6,                           // salc
+        0xd7,                           // xlat
+        */
+
+       // primera tabla de instrucciones del x87
+        0xD8, 0xD0,                     // ESC(fcom  st(0))
+        0xD8, 0xD1,                     // ESC(fcom  st(1))
+        0xD8, 0xD2,                     // ESC(fcom  st(2))
+        0xD8, 0xD3,                     // ESC(fcom  st(3))
+        0xD8, 0xD4,                     // ESC(fcom  st(4))
+        0xD8, 0xD5,                     // ESC(fcom  st(5))
+        0xD8, 0xD6,                     // ESC(fcom  st(6))
+        0xD8, 0xD7,                     // ESC(fcom  st(7))
+        0xd8, 0xd8,                     // ESC(fcomp st(0))
+        0xd8, 0xd9,                     // ESC(fcomp st(1))
+        0xd8, 0xda,                     // ESC(fcomp st(2))
+        0xd8, 0xdb,                     // ESC(fcomp st(3))
+        0xd8, 0xdc,                     // ESC(fcomp st(4))
+        0xd8, 0xdd,                     // ESC(fcomp st(5))
+        0xd8, 0xde,                     // ESC(fcomp st(6))
+        0xd8, 0xdf,                     // ESC(fcomp st(7))
+
+        // segunda tabla de instrucciones del x87
+        0xD9, 0xC0,                     // ESC(fld st(0))
+        0xD9, 0xC1,                     // ESC(fld st(1))
+        0xD9, 0xC2,                     // ESC(fld st(2))
+        0xD9, 0xC3,                     // ESC(fld st(3))
+        0xD9, 0xC4,                     // ESC(fld st(4))
+        0xD9, 0xC5,                     // ESC(fld st(5))
+        0xD9, 0xC6,                     // ESC(fld st(6))
+        0xD9, 0xC7,                     // ESC(fld st(7))
+        0xD9, 0x80, 0x34, 0x12,         // ESC(fld dword ptr [bx + si + 0x1234])
+        0xD9, 0x81, 0x34, 0x12,         // ESC(fld dword ptr [bx + di + 0x1234])
+        0xD9, 0x82, 0x34, 0x12,         // ESC(fld dword ptr [bp + si + 0x1234])
+        0xD9, 0x83, 0x34, 0x12,         // ESC(fld dword ptr [bp + di + 0x1234])
+        0xD9, 0x84, 0x34, 0x12,         // ESC(fld dword ptr [si      + 0x1234])
+        0xD9, 0x85, 0x34, 0x12,         // ESC(fld dword ptr [di      + 0x1234])
+        0xD9, 0x86, 0x34, 0x12,         // ESC(fld dword ptr [bp      + 0x1234])
+        0xD9, 0x87, 0x34, 0x12,         // ESC(fld dword ptr [bx      + 0x1234])
+
+        // quinta tabla de instrucciones del x87
+        0xDD, 0xD8,                     // ESC(fstp st(0))
+        0xDD, 0xD9,                     // ESC(fstp st(1))
+        0xDD, 0xDA,                     // ESC(fstp st(2))
+        0xDD, 0xDC,                     // ESC(fstp st(4))
+        0xDD, 0xDD,                     // ESC(fstp st(5))
+        0xDD, 0xDE,                     // ESC(fstp st(6))
+        0xDD, 0xDF,                     // ESC(fstp st(7))
     };
+
+    // -Os -s -ffunction-sections -Wl,--gc-sections -fno-asynchronous-unwind-tables -Wl,--strip-all
 
     Instruction_info instruccion = {0};
     size_t position = 0, position_old = position, cantidad_de_instrucciones = 0;
@@ -309,6 +369,16 @@ int main(){
         printf("opcode(0x%02x -> %05s) flags[0x%08x] = ", i, get_string_instruction_by_id_8086((my_instruccion_8086[i] & 0xff000000) >> 24), my_instruccion_8086[i]);
         print_flags(my_instruccion_8086[i]);
     }
+
+    for (int i = 0xd8; i  < (0xd8 + 8); i++) {
+        for (int j = 0; j < my_instruccion_8087_table_sizes[i & 0b00000111]; j++){
+            printf("opcode(0x%02x 0x%02x) flags[0x%08x] flags_x87[0x%08x] = ", i, j,
+            my_instruccion_8086[(i & 0b00000111)], my_instruccion_8087_table[(i & 0b00000111)][j]);
+            print_flags_x87(my_instruccion_8087_table[(i & 0b00000111)][j]);
+        }
+        
+    }
+    
 
     printf("cantidad de instrucciones: %zu\n", cantidad_de_instrucciones);
     puts("Exit...");
