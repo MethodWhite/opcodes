@@ -992,6 +992,118 @@ typedef enum string_instrution_id_8086 {
     STRING_INSTRUCTION8086(INC),
     STRING_INSTRUCTION8086(DEC)
 } string_instrution_id_8086;
+static char *instruction_8086[] = {
+    [STRING_INSTRUCTION8086(ADD)]   = "ADD",
+    [STRING_INSTRUCTION8086(OR)]    = "OR",
+    [STRING_INSTRUCTION8086(ADC)]   = "ADC",
+    [STRING_INSTRUCTION8086(SBB)]   = "SBB",
+    [STRING_INSTRUCTION8086(AND)]   = "AND",
+    [STRING_INSTRUCTION8086(DAA)]   = "DAA",
+    [STRING_INSTRUCTION8086(SUB)]   = "SUB",
+    [STRING_INSTRUCTION8086(DAS)]   = "DAS",
+    [STRING_INSTRUCTION8086(XOR)]   = "XOR",
+    [STRING_INSTRUCTION8086(AAA)]   = "AAA",
+    [STRING_INSTRUCTION8086(CMP)]   = "CMP",
+    [STRING_INSTRUCTION8086(AAS)]   = "AAS",
+    [STRING_INSTRUCTION8086(JO)]    = "JO",
+    [STRING_INSTRUCTION8086(JNO)]   = "JNO",
+    [STRING_INSTRUCTION8086(JB)]    = "JB",
+    [STRING_INSTRUCTION8086(JNB)]   = "JNB",
+    [STRING_INSTRUCTION8086(JZ)]    = "JZ",
+    [STRING_INSTRUCTION8086(JNZ)]   = "JNZ",
+    [STRING_INSTRUCTION8086(JBE)]   = "JBE",
+    [STRING_INSTRUCTION8086(JNBE)]  = "JNBE",
+    [STRING_INSTRUCTION8086(JS)]    = "JS",
+    [STRING_INSTRUCTION8086(JNS)]   = "JNS",
+    [STRING_INSTRUCTION8086(JP)]    = "JP",
+    [STRING_INSTRUCTION8086(JNP)]   = "JNP",
+    [STRING_INSTRUCTION8086(JL)]    = "JL",
+    [STRING_INSTRUCTION8086(JNL)]   = "JNL",
+    [STRING_INSTRUCTION8086(JLE)]   = "JLE",
+    [STRING_INSTRUCTION8086(JNLE)]  = "JNLE",
+    [STRING_INSTRUCTION8086(TEST)]  = "TEST",
+    [STRING_INSTRUCTION8086(LEA)]   = "LEA",
+    [STRING_INSTRUCTION8086(PUSH)]  = "PUSH",
+    [STRING_INSTRUCTION8086(POP)]   = "POP",
+    [STRING_INSTRUCTION8086(NOP)]   = "NOP",
+    [STRING_INSTRUCTION8086(XCHG)]  = "XCHG",
+    [STRING_INSTRUCTION8086(CBW)]   = "CBW",
+    [STRING_INSTRUCTION8086(CWD)]   = "CWD",
+    [STRING_INSTRUCTION8086(CALL)]  = "CALL",
+    [STRING_INSTRUCTION8086(WAIT)]  = "WAIT",
+    [STRING_INSTRUCTION8086(PUSHF)] = "PUSHF",
+    [STRING_INSTRUCTION8086(POPF)]  = "POPF",
+    [STRING_INSTRUCTION8086(SAHF)]  = "SAHF",
+    [STRING_INSTRUCTION8086(LAHF)]  = "LAHF",
+    [STRING_INSTRUCTION8086(MOV)]   = "MOV",
+    [STRING_INSTRUCTION8086(MOVS)]  = "MOVS",
+    [STRING_INSTRUCTION8086(CMPS)]  = "CMPS",
+    [STRING_INSTRUCTION8086(STOS)]  = "STOS",
+    [STRING_INSTRUCTION8086(LODS)]  = "LODS",
+    [STRING_INSTRUCTION8086(SCAS)]  = "SCAS",
+    [STRING_INSTRUCTION8086(RET)]   = "RET",
+    [STRING_INSTRUCTION8086(LES)]   = "LES",
+    [STRING_INSTRUCTION8086(LDS)]   = "LDS",
+    [STRING_INSTRUCTION8086(INT_3)] = "INT 3",
+    [STRING_INSTRUCTION8086(INT)]   = "INT",
+    [STRING_INSTRUCTION8086(INTO)]  = "INTO",
+    [STRING_INSTRUCTION8086(IRET)]  = "IRET",
+    [STRING_INSTRUCTION8086(ROL)]   = "ROL",
+    [STRING_INSTRUCTION8086(ROR)]   = "ROR",
+    [STRING_INSTRUCTION8086(RCL)]   = "RCL",
+    [STRING_INSTRUCTION8086(RCR)]   = "RCR",
+    [STRING_INSTRUCTION8086(SHL)]   = "SHL",
+    [STRING_INSTRUCTION8086(SHR)]   = "SHR",
+    [STRING_INSTRUCTION8086(SAR)]   = "SAR",
+    [STRING_INSTRUCTION8086(AAM)]   = "AAM",
+    [STRING_INSTRUCTION8086(SALC)]  = "SALC",
+    [STRING_INSTRUCTION8086(JMP)] = "JMP",
+    [STRING_INSTRUCTION8086(AAD)]   = "AAD",
+    [STRING_INSTRUCTION8086(XLAT)]  = "XLAT",
+    [STRING_INSTRUCTION8086(CLD)] = "CLD",
+    [STRING_INSTRUCTION8086(ESC)]   = "ESC",
+    [STRING_INSTRUCTION8086(LOOPNE)]    = "LOOPNE",
+    [STRING_INSTRUCTION8086(LOOPE)] = "LOOPE",
+    [STRING_INSTRUCTION8086(LOOP)] = "LOOP",
+    [STRING_INSTRUCTION8086(JCXZ)]  = "JCXZ",
+    [STRING_INSTRUCTION8086(IN)]    = "IN",
+    [STRING_INSTRUCTION8086(OUT)]   = "OUT",
+    [STRING_INSTRUCTION8086(REPNE)] = "REPNE",
+    [STRING_INSTRUCTION8086(REP)]   = "REP",
+    [STRING_INSTRUCTION8086(LOCK)]  = "LOCK",
+    [STRING_INSTRUCTION8086(CMD)]   = "CMD",
+    [STRING_INSTRUCTION8086(HLT)]   = "HLT",
+    [STRING_INSTRUCTION8086(CMC)]   = "CMC",
+    [STRING_INSTRUCTION8086(NOT)]   = "NOT",
+    [STRING_INSTRUCTION8086(NEG)]   = "NEG",
+    [STRING_INSTRUCTION8086(MUL)]   = "MUL",
+    [STRING_INSTRUCTION8086(IMUL)]  = "IMUL",
+    [STRING_INSTRUCTION8086(DIV)]   = "DIV",
+    [STRING_INSTRUCTION8086(IDIV)]  = "IDIV",
+    [STRING_INSTRUCTION8086(CLC)]   = "CLC",
+    [STRING_INSTRUCTION8086(STC)]   = "STC",
+    [STRING_INSTRUCTION8086(CLI)]   = "CLI",
+    [STRING_INSTRUCTION8086(STI)]   = "STI",
+    [STRING_INSTRUCTION8086(CLD)]   = "CLD",
+    [STRING_INSTRUCTION8086(STD)]   = "STD",
+    [STRING_INSTRUCTION8086(INC)]   = "INC",
+    [STRING_INSTRUCTION8086(DEC)]   = "DEC"
+    
+};
+static const uint8_t *Mod_rm_disp_8086[5][8] = {
+    // rm    0                      1                    10                    11                   100              101                110              111
+    {   "[BX + SI]",           "[BX + DI]",          "[BP + SI]",          "[BP + DI]",             "[SI]",          "[DI]",            "[BP]",          "[BX]"         },  // mod 00
+    { "[BX + SI + 0x%02x]",    "[BX + DI + 0x%02x]", "[BP + SI + 0x%02x]", "[BP + DI + 0x%02x]",    "[SI + 0x%02x]", "[DI + 0x%02x]",   "[BP + 0x%02x]", "[BX + 0x%02x]"},  // mod 01
+    { "[BX + SI + 0x%04x]",    "[BX + DI + 0x%04x]", "[BP + SI + 0x%04x]", "[BP + DI + 0x%04x]",    "[SI + 0x%04x]", "[DI + 0x%04x]",   "[BP + 0x%04x]", "[BX + 0x%04x]"}   // mod 10
+};
+static const uint8_t *reg_8086[2][8] = {
+    // rm    0                   1                    10                    11                   100              101                110              111
+    { "AL",                    "CL",                 "DL",                 "BL",                    "AH",            "CH",              "DH",            "BH"           },  // mod 11
+    { "AX",                    "CX",                 "DX",                 "BX",                    "SP",            "BP",              "SI",            "DI"           }   // mod 11
+};
+static const uint8_t *reg_seg[] = {
+    "ES", "CS", "SS", "DS", "FS", "GS"
+};
 
 typedef enum encoder_x86 { // se especifica el formato a encodificar / descodificar las instrucciones
     ENCODER_IN_16bits,
@@ -1000,11 +1112,11 @@ typedef enum encoder_x86 { // se especifica el formato a encodificar / descodifi
 } encoder_x86;
 
 typedef enum register_id { // se especifica los registros
-    REGISTER_A = 0b000, // AL, AX, EAX = 000
-    REGISTER_C = 0b001, // CL, CX, ECX = 001
-    REGISTER_B = 0b010, // BL, BX, EBX = 010
-    REGISTER_D = 0b011, // DL, DX, EDX = 011
-    REGISTER_S = 0b100, // AH, SP, ESX = 100
+    REGISTER_A  = 0b000, // AL, AX, EAX = 000
+    REGISTER_C  = 0b001, // CL, CX, ECX = 001
+    REGISTER_B  = 0b010, // BL, BX, EBX = 010
+    REGISTER_D  = 0b011, // DL, DX, EDX = 011
+    REGISTER_S  = 0b100, // AH, SP, ESX = 100
     REGISTER_BP = 0b101, // CH, BP, EBX = 101
     REGISTER_SP = 0b110, // DH, SI, ESX = 110
     REGISTER_DI = 0b111, // BH, DI, EDX = 111
@@ -1241,8 +1353,9 @@ typedef union data
 
 typedef enum reg_seg_x86 {
     reg_seg_ES,
-    reg_seg_DS,
-    reg_seg_CS
+    reg_seg_CS,
+    reg_seg_SS,
+    reg_seg_DS
 } reg_seg_x86;
 
 typedef struct Instruction_info
@@ -1258,6 +1371,12 @@ typedef struct Instruction_info
     uint8_t  flags_prefix;   // flags que indica prefijos de la instrucccion
     uint8_t  flags_x87;      // flags para las instrucciones del x87
     #define FLAG_PREFIX_Prefix_addr_size (1 << 0)
+    #define FLAG_PREFIX_Prefix_SS        (1 << 1)
+    #define FLAG_PREFIX_Prefix_CS        (1 << 3)
+    #define FLAG_PREFIX_Prefix_ES        (1 << 4)
+    #define FLAG_PREFIX_Prefix_DS        (1 << 5)
+    #define FLAG_PREFIX_Prefix_FS        (1 << 6)
+    #define FLAG_PREFIX_Prefix_GS        (1 << 7)
 } Instruction_info;
 
 #pragma pack(pop)
@@ -1518,7 +1637,7 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
     // or al, inmed16
     [0b00001101] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(OR)),  // opcode(0d -> 0b00001101) -> (or) (data high if W = 1)
 
-    // push es
+    // push cs
     [0b00001110] = REG_SEG_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(PUSH)),                            // opcode(0e -> 0b00001110)
 
     // pop cs -> https://www.righto.com/2023/07/undocumented-8086-instructions.html
@@ -1663,10 +1782,11 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
 
     [0x3b] = MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | REG_MEM_16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(CMP)),
 
-    [0x3c] = INMED8_MASK,
+    [0x3c] = INMED8_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(CMP)),
 
-    [0x3d] = INMED16_MASK,
+    [0x3d] = INMED16_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(CMP)),
 
+    // prefijo DS
     [0x3e] = MASK_PREFIX,
 
     [0x3f] =  STRING_INSTRU(STRING_INSTRUCTION8086(AAS)),
@@ -2184,7 +2304,8 @@ typedef enum Prefix_x86_others {
  */
 int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instruction_info* instruction, encoder_x86 encoder);
 void print_Instruction_info(Instruction_info* instruction, encoder_x86 encode);
+void get_string_Instruction_info_8086(Instruction_info *instruction, char* string, size_t size);
 
-
+#include "./print_structs_format.h"
 #include "opcodes_prefix.c"
 #endif 
