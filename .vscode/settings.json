@@ -16,6 +16,9 @@
         "*.HLASM*": "asm-list-file",
         "*.HLA*": "asm-list-file",
         "*.MACLIB*": "asm-list-file",
+        "*.DBD*": "hlasm",
+        "*.MFS*": "hlasm",
+        "*.PCB*": "hlasm",
         "*.EXEC*": "rexx",
         "*.REXX*": "rexx",
         "*.REXXINC*": "rexx",
@@ -221,7 +224,13 @@
         "xloctime": "cpp",
         "*.c": "c",
         "*.s": "arm",
-        "*.txt": "c"
+        "*.txt": "c",
+        "cstdarg": "cpp",
+        "cwctype": "cpp",
+        "memory_resource": "cpp",
+        "cinttypes": "cpp",
+        "*.inc": "nasm",
+        "*.db": "c"
     },
     "makefile.configureOnOpen": true
 }

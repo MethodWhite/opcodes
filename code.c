@@ -60,7 +60,6 @@ int main(){
     uint8_t instrucciones[] = {
         // instruccion ilegal:
         //0x67, 0x12, 0x04, 0x20, // adc al, [al+ah] // 0x04 codifica desplazamiento bajo
-        /*
         0x00, 0x80, 0x43, 0x65,         // add  byte ptr [bx + si + 0x6543], al
         0x01, 0xa8, 0x43, 0x65,         // add  word ptr [bx + si + 0x6543], bp
         0x02, 0x87, 0x34, 0x12,         // add  al, [bx+0x1234]
@@ -299,7 +298,7 @@ int main(){
         0xd5,                           // aad
         0xd6,                           // salc
         0xd7,                           // xlat
-        */
+        
 
        // primera tabla de instrucciones del x87
         0xD8, 0xD0,                     // ESC(fcom  st(0))
@@ -362,6 +361,7 @@ int main(){
             instrucciones + position, instrucciones + sizeof(instrucciones), position);
         memset(&instruccion, 0, sizeof(Instruction_info));
         position_old = position;
+
         cantidad_de_instrucciones++;
     }
     
@@ -372,9 +372,11 @@ int main(){
 
     for (int i = 0xd8; i  < (0xd8 + 8); i++) {
         for (int j = 0; j < my_instruccion_8087_table_sizes[i & 0b00000111]; j++){
-            printf("opcode(0x%02x 0x%02x) flags[0x%08x] flags_x87[0x%08x] = ", i, j,
-            my_instruccion_8086[(i & 0b00000111)], my_instruccion_8087_table[(i & 0b00000111)][j]);
-            print_flags_x87(my_instruccion_8087_table[(i & 0b00000111)][j]);
+            if (my_instruccion_8087_table[(i & 0b00000111)][j] != 0) { // imprimir solo aquellos opcodes que no tengan none flags
+                printf("opcode(0x%02x 0x%02x) flags[0x%08x] flags_x87[0x%02x] = ", i, j,
+                my_instruccion_8086[(i & 0b00000111)], my_instruccion_8087_table[(i & 0b00000111)][j]);
+                print_flags_x87(my_instruccion_8087_table[(i & 0b00000111)][j]);
+            }
         }
         
     }
