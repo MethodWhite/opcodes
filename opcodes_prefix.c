@@ -368,7 +368,7 @@ const char* get_prefix_by_flags_prefix(uint8_t flags_prefix){
 
 void get_string_Instruction_info_8086(Instruction_info *instruction, char* string, size_t size) {
     uint32_t opcode = instruction->opcode1.opcode_byte.byte;
-    print_Instruction_info(instruction, ENCODER_IN_16bits);
+    //print_Instruction_info(instruction, ENCODER_IN_16bits);
     char* string_opcode = NULL;
     if (opcode >= 0xd8 && opcode <= 0xdf) {
 
@@ -419,6 +419,46 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
 
             if (temp != NULL) free(temp); // liberar la memoria reservada
             return;
+        } else if (opcode >= 0xd0 && opcode <= 0xd3){
+            // en estas instrucciones el campo reg especifica la instruccion
+            // ademas son del tipo "instruccion mem/reg, inmediato"
+            string_rg = malloc(15);
+            uint32_t id_string_opcode = 0;
+            switch (instruction->Mod_rm.fields.reg) {
+                case 0b000: id_string_opcode = STRING_INSTRUCTION8086(ROL); break;
+                case 0b001: id_string_opcode = STRING_INSTRUCTION8086(ROR);  break;
+                case 0b010: id_string_opcode = STRING_INSTRUCTION8086(RCL); break;
+                case 0b011: id_string_opcode = STRING_INSTRUCTION8086(RCR); break;
+                case 0b100: id_string_opcode = STRING_INSTRUCTION8086(SHL); break;
+                case 0b101: id_string_opcode = STRING_INSTRUCTION8086(SHR); break;
+                case 0b110: id_string_opcode = STRING_INSTRUCTION8086(NOP); break; // invalida
+                case 0b111: id_string_opcode = STRING_INSTRUCTION8086(SAR); break;
+            }
+
+            if        (opcode == 0xd0 || opcode == 0xd1) {  
+                snprintf(string_rg, size, "%s", "1");
+            } else if (opcode == 0xd2 || opcode == 0xd3) {
+                snprintf(string_rg, size, "%s", "CL"); 
+            }
+            char* temp2 = malloc(10);
+            if(instruction->flags_prefix != 0) {
+                temp = string_modrm = malloc(10);
+                snprintf(string_modrm, size, "%s:%s", get_prefix_by_flags_prefix(instruction->flags_prefix), get_mod_rm_8086(instruction)); 
+                snprintf(temp2, size, string_modrm, instruction->displacement.ui16); // añadir el desplazamiento del mod rm
+                free(temp);
+            } else {
+                string_modrm = get_mod_rm_8086(instruction);
+                snprintf(temp2, size, string_modrm, instruction->displacement.ui16); // añadir el desplazamiento del mod rm
+            }
+            temp = string_modrm = temp2;
+        
+            snprintf(string, size, "%s %s %s, %s", 
+                get_string_instruction_by_id_8086(id_string_opcode), // 0
+                (instruction->opcode1.opcode_bits.b1 & 1) ? "word" : "byte", // 1
+            string_modrm, string_rg ); 
+
+            if (temp != NULL) free(temp); // liberar la memoria reservada
+            return;
         }
 
 
@@ -427,8 +467,18 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
             (my_instruccion_8086[instruction->opcode1.opcode_byte.byte]) >> 24);
 
         if (instruction->flags & MOD_RM_REG_MASK){
+            uint8_t opcode = instruction->opcode1.opcode_byte.byte;
+            if(
+                opcode == 0xc6 || opcode == 0xc7
+            ) goto call_far_create;
             // si se trata de la instruccion LEA  reg, [BX + DI + mem16] solo hay una forma de analizarla:
-            if (instruction->opcode1.opcode_byte.byte == 0x8D) instruction->opcode1.opcode_bits_final.d = 1;
+            if (
+                opcode == 0x8D
+                ) instruction->opcode1.opcode_bits_final.d = 1;
+            else if (opcode == 0xc4 || 0xc5 == opcode) {
+                instruction->opcode1.opcode_bits_final.d = 1;
+                instruction->opcode1.opcode_bits.b1 = 1; // estas instrucciones solo son en 16bits
+            }
 
             if (instruction->opcode1.opcode_bits_final.d == 0) {
                 if (instruction->flags_prefix != 0) {
@@ -439,13 +489,13 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                 } else string_modrm = get_mod_rm_8086(instruction);
 
                 // para el opcode 0x8c el campo reg especifica un registro de segmento:
-                string_rg    = (instruction->opcode1.opcode_byte.byte == 0x8c) ?
+                string_rg    = (opcode == 0x8c) ?
                     reg_seg[instruction->Mod_rm.fields.reg] :
                     get_reg_8086(instruction->Mod_rm.fields.reg, instruction->opcode1.opcode_bits.b1);
 
             } else {
                  // para el opcode 0x8c el campo reg especifica un registro de segmento:
-                string_modrm = (instruction->opcode1.opcode_byte.byte == 0x8e) ?
+                string_modrm = (opcode == 0x8e) ?
                     reg_seg[instruction->Mod_rm.fields.reg] :
                     get_reg_8086(instruction->Mod_rm.fields.reg, instruction->opcode1.opcode_bits.b1);
                 if (instruction->flags_prefix != 0) {
@@ -478,7 +528,22 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
             mem = "[0x%x]\0";
         }
         if (instruction->flags & INMED16_MASK || instruction->flags & INMED8_MASK) {
-            if(instruction->opcode1.opcode_byte.byte == 0x9a) goto call_far_create;
+            uint8_t opcode = instruction->opcode1.opcode_byte.byte;
+            if(
+                opcode == 0x9a || // call far
+                (
+                    // mov reg, inmed
+                    opcode >= 0xB0 && opcode <= 0xBF) || (
+
+                    // ret near inmed16
+                    opcode == 0xc0 ) || (opcode == 0xc2) ||( // ret(0xc2) near inmed16 no documentado
+                    // el opcode 0xc2 es ret near solo en el 8086
+
+                    // ret far inmed16
+                    opcode == 0xc8 ) || (opcode == 0xca)  // ret(0xca) far inmed16 no documentado
+                    // el opcode 0xca es ret far solo en el 8086
+
+            ) goto call_far_create;
             if (instruction->opcode1.opcode_bits_final.d == 1) {
                 temp = string_modrm = malloc(10);
                 snprintf(string_modrm, size, (char*)mem, instruction->immediate.ui16);
@@ -538,8 +603,13 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                         instruction_8086[STRING_INSTRUCTION8086(JO) + bit_tttn],
                                 (int8_t)instruction->displacement.ui8 +2
                             );
+            return;
         }
-        if (instruction->flags == 0) { // si NONE_FLAGS
+        call_far_create:
+        if (
+            instruction->flags == 0 || instruction->flags & INMED8_MASK || 
+            instruction->flags & INMED16_MASK || instruction->flags & UNDOCUMENTED_OPCODE_MASK
+        ) { // si NONE_FLAGS
             volatile uint8_t disp_sub = 0;
             volatile register uint8_t opcode = instruction->opcode1.opcode_byte.byte;
             switch (opcode) {
@@ -557,6 +627,32 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                 case 0xAD: snprintf(string, size, "LODSW AX, WORD PTR [SI]");       return;
                 case 0xAE: snprintf(string, size, "SCASB AL, BYTE PTR ES:[DI]");    return;
                 case 0xAF: snprintf(string, size, "SCASW AX, WORD PTR ES:[DI]");    return;
+                case 0xCB: snprintf(string, size, "RET FAR");                       return; // retf
+                case 0xc0: // no documentada
+                case 0xc2: snprintf(string, size, "RET NEAR 0x%04x", instruction->immediate.ui16);    return;
+
+                // estos dos casos solo pueden usar mod 00
+                case 0xc6: // mov  byte ptr [reg + reg], inmed8
+                case 0xc7: // mov  word ptr [reg + reg], inmed16
+                    snprintf(string, size, "%s %s %s, 0x%x",
+                        // obtener la instruccion via el ID flags de su tabla
+                            get_string_instruction_by_id_8086(
+                                STRING_INSTRUCTION8086(MOV)),
+                                (opcode == 0xc6) ? "byte" : "word",
+                                Mod_rm_disp_8086[0][instruction->Mod_rm.fields.R_M],
+                                instruction->immediate.ui16
+
+                            );
+                    return;
+                case 0xc1: // ret (no documentada) solo para el 8086
+                case 0xc3: // ret
+                case 0xcc: // int 0x3
+                case 0xce: // into
+                case 0xcf: // iret
+                case 0xd4: // aam
+                case 0xd5: // aad
+                case 0xd6: // salc
+                case 0xd7: // xlat
                 case 0x2F:
                 case 0x27:
                 case 0x37:
@@ -579,6 +675,7 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                                     & 0xff000000) >> 24)
                                 );
                     return;
+                    
                 default: // el resto de caso son instrucciones a procesar de distinta manera
 
                     if      (opcode >= 0x40 && opcode <= 0x47) disp_sub = 0x40;
@@ -599,12 +696,33 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                             );
                         return;
                     } else if (opcode == 0x9a) {
-                        call_far_create:
                         snprintf(string, size, "%s FAR 0x%04x:0x%04x",
                         // obtener la instruccion via el ID flags de su tabla
                             get_string_instruction_by_id_8086(STRING_INSTRUCTION8086(CALL)),
                                 instruction->displacement.ui16, instruction->immediate.ui16
                             );
+                        return;
+                    } else if (opcode == 0XC8 || opcode == 0xCA) {
+                        snprintf(string, size, "%s FAR 0x%04x",
+                        // obtener la instruccion via el ID flags de su tabla
+                            get_string_instruction_by_id_8086(STRING_INSTRUCTION8086(RET)),
+                                instruction->immediate.ui16
+                            );
+                        return;
+                    } else if(opcode >= 0xB0 && opcode <= 0xBf ) {
+                        snprintf(string, size, "%s %s, 0x%04x",
+                        // obtener la instruccion via el ID flags de su tabla
+                        get_string_instruction_by_id_8086(STRING_INSTRUCTION8086(MOV)),
+                            // las instrucciones "mov   reg, inmed" son las siguientes:
+                            // entre 0xB0 y 0xB7 se usa reg8 y desde 0xB8 a 0xB9 reg16
+                            // al hacer (opcode & 0b1000) >> 3 indicaremos que el bit W sera activo si se da
+                            // que el bit de la cuarta posicion esta activo. mientras (opcode - 0xB0) obtendra
+                            // uno de los nibbles, donde se descibre el registro a usar, este va de 0x0 a 0xf
+                            // pero la tabla reg_8086 es de 2 * 8
+                            // 0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF,
+                            reg_8086[(opcode & 0b1000) >> 3][(opcode - 0xB0) % 0b1000 ],
+                            instruction->immediate.ui16
+                        );
                         return;
                     }
                     else {
@@ -615,14 +733,14 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                         // obtener la instruccion via el ID flags de su tabla
                             get_string_instruction_by_id_8086(
                                 // acceder a las flags de la instruccion atraves de su opcode
-                                (my_instruccion_8086[instruction->opcode1.opcode_byte.byte]
+                                (my_instruccion_8086[opcode]
                                 // obtener el ID string de la instruccion actual
                                 & 0xff000000) >> 24),
-                                reg_8086[1][instruction->opcode1.opcode_byte.byte - disp_sub]
+                                reg_8086[1][opcode - disp_sub]
                             );
                     return;
             }
-        }
+        } else snprintf(string, size, "error unkonow opcode"); 
     }
 }
     

@@ -1090,7 +1090,7 @@ static char *instruction_8086[] = {
     [STRING_INSTRUCTION8086(DEC)]   = "DEC"
     
 };
-static const uint8_t *Mod_rm_disp_8086[5][8] = {
+static const uint8_t *Mod_rm_disp_8086[3][8] = {
     // rm    0                      1                    10                    11                   100              101                110              111
     {   "[BX + SI]",           "[BX + DI]",          "[BP + SI]",          "[BP + DI]",             "[SI]",          "[DI]",            "[BP]",          "[BX]"         },  // mod 00
     { "[BX + SI + 0x%02x]",    "[BX + DI + 0x%02x]", "[BP + SI + 0x%02x]", "[BP + DI + 0x%02x]",    "[SI + 0x%02x]", "[DI + 0x%02x]",   "[BP + 0x%02x]", "[BX + 0x%02x]"},  // mod 01
@@ -2036,8 +2036,8 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
 
     [0xc4] = STRING_INSTRU(STRING_INSTRUCTION8086(LES)) | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK,
     [0xc5] = STRING_INSTRU(STRING_INSTRUCTION8086(LDS)) | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK,
-    [0xc6] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)) | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK,
-    [0xc7] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)) | INMED8_MASK | DIS_HIGH_MASK,
+    [0xc6] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)) | MOD_RM_REG_MASK | INMED8_MASK ,
+    [0xc7] = STRING_INSTRU(STRING_INSTRUCTION8086(MOV)) | MOD_RM_REG_MASK | INMED16_MASK,
 
     // ret far inmed16, es la misma que CA
     [0b11001000] = INMED16_MASK | UNDOCUMENTED_OPCODE_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(RET)), // opcode(200 -> 0b11001000) -> 0xC8 (equivalent: 0xCA) = ret far inmed16

@@ -60,7 +60,7 @@ int main(){
     uint8_t instrucciones[] = {
         // instruccion ilegal:
         //0x67, 0x12, 0x04, 0x20, // adc al, [al+ah] // 0x04 codifica desplazamiento bajo
-        /*0x00, 0x80, 0x43, 0x65,         // add  byte ptr [bx + si + 0x6543], al
+        0x00, 0x80, 0x43, 0x65,         // add  byte ptr [bx + si + 0x6543], al
         0x01, 0xa8, 0x43, 0x65,              // add  word ptr [bx + si + 0x6543], bp
         0x02, 0x87, 0x34, 0x12,              // add  al, [bx+0x1234]
         0x03, 0x87, 0x34, 0x12,              // add  ax, [bx+0x1234]
@@ -246,7 +246,7 @@ int main(){
         0xAC,                                // lodsb al, byte ptr [si]
         0xAD,                                // lodsw ax, word ptr [si]
         0xAE,                                // scasb al, byte ptr es:[di]
-        0xAF,                                // scasw ax, word ptr es:[di]*/
+        0xAF,                                // scasw ax, word ptr es:[di]
         0xB0, 0x12,                          // mov   al, 0x12
         0xB1, 0x23,                          // mov   cl, 0x23
         0xB2, 0x45,                          // mov   dl, 0x45
@@ -268,7 +268,7 @@ int main(){
         0xC0, 0x34, 0x12,                    // ret near 0x1234
                                              // sal byte ptr [si], 0x12 en no 8086
 
-        // ret ( no documentada) para el 8086
+        // ret ( no documentada) para el 808678 56 34 12 
         0xc1,                            // ret
         // 0xC1, 0x34, 0x54,                // sal word ptr [si], 0x54 en no 8086
         
@@ -364,17 +364,15 @@ int main(){
 
         /**/char* string = calloc(64, sizeof(char));
         get_string_Instruction_info_8086(&instruccion, string, 64);
-        printf("%s\n", string);
-        free(string);
 
-        printf("[*] size instruction %d (%p - %p -> %zu)\n", (position-position_old),
-            instrucciones + position, instrucciones + sizeof(instrucciones), position);
+        printf("[*] size instruction %d (%p - %p -> %03zu) %s\n", (position-position_old),
+            instrucciones + position, instrucciones + sizeof(instrucciones), position, string);
+        free(string);
         
         memset(&instruccion, 0, sizeof(Instruction_info));
         position_old = position;
 
         cantidad_de_instrucciones++;
-        if (cantidad_de_instrucciones == 8) break;
         
     }
     
