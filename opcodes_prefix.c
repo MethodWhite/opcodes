@@ -471,7 +471,10 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
             return;
         }
         uint64_t mem = "0x%x\0";
-        if (instruction->opcode1.opcode_byte.byte >= 0xa0 && instruction->opcode1.opcode_byte.byte <= 0xa3){
+        if (
+            (instruction->opcode1.opcode_byte.byte >= 0xa0 && instruction->opcode1.opcode_byte.byte <= 0xa3) ||
+            (instruction->opcode1.opcode_byte.byte >= 0xa8 && instruction->opcode1.opcode_byte.byte <= 0xa9)
+        ){
             mem = "[0x%x]\0";
         }
         if (instruction->flags & INMED16_MASK || instruction->flags & INMED8_MASK) {
@@ -544,6 +547,16 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                  * hay dos tipos de instrucciones que tienen NONE_FLAGS normalmente. las que no usan registros
                  * como aaa o aas, y las que si lo hacen como inc ax
                  */
+                case 0xa4: snprintf(string, size, "MOVSB BYTE ES:[DI], BYTE [SI]"); return;
+                case 0xa5: snprintf(string, size, "MOVSW WORD ES:[DI], WORD [SI]"); return;
+                case 0xA6: snprintf(string, size, "CMPSB BYTE ES:[SI], BYTE [DI]"); return;
+                case 0xA7: snprintf(string, size, "CMPSW WORD ES:[SI], WORD [DI]"); return;
+                case 0xaa: snprintf(string, size, "STOSB BYTE ES:[DI], AL");        return;
+                case 0xab: snprintf(string, size, "STOSW WORD ES:[DI], AX");        return;
+                case 0xAC: snprintf(string, size, "LODSB AL, BYTE PTR [SI]");       return;
+                case 0xAD: snprintf(string, size, "LODSW AX, WORD PTR [SI]");       return;
+                case 0xAE: snprintf(string, size, "SCASB AL, BYTE PTR ES:[DI]");    return;
+                case 0xAF: snprintf(string, size, "SCASW AX, WORD PTR ES:[DI]");    return;
                 case 0x2F:
                 case 0x27:
                 case 0x37:

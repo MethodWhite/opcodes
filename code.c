@@ -230,7 +230,7 @@ int main(){
         0x9c,                                // pushf
         0x9d,                                // popf
         0x9e,                                // sahf
-        0x9f,                                // lahf*/
+        0x9f,                                // lahf
         0xa0, 0x12,                          // mov al, [0x12]
         0xa1, 0x12, 0x34,                    // mov ax, [0x3412]
         0xa2, 0x12,                          // mov [0x12], al
@@ -246,7 +246,7 @@ int main(){
         0xAC,                                // lodsb al, byte ptr [si]
         0xAD,                                // lodsw ax, word ptr [si]
         0xAE,                                // scasb al, byte ptr es:[di]
-        0xAF,                                // scasw ax, word ptr es:[di]
+        0xAF,                                // scasw ax, word ptr es:[di]*/
         0xB0, 0x12,                          // mov   al, 0x12
         0xB1, 0x23,                          // mov   cl, 0x23
         0xB2, 0x45,                          // mov   dl, 0x45
