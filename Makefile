@@ -1,5 +1,5 @@
 CC        := gcc
-CFLAGS    := -flto-compression-level=19 -march=native -fvisibility-inlines-hidden -fvisibility=hidden -O3
+CFLAGS    := -flto-compression-level=19 -march=native -fvisibility-inlines-hidden -fvisibility=hidden -O3 -Os -s -ffunction-sections -Wl,--gc-sections -fno-asynchronous-unwind-tables -Wl,--strip-all
 OBJDIR    := file_objects
 OBJSTRIP  := --localize-hidden --strip-unneeded 
 EXE       := code.exe
