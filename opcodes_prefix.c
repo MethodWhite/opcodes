@@ -176,6 +176,16 @@ int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instru
                 *position += 1; code++;
                 break;
             */
+            case 0xf1: // prefijo LOCK no documentado, solo para el 8086
+            case 0xF0: // prefijo LOCK
+                instruction->flags_prefix |= FLAG_PREFIX_Prefix_LOCK; // se encontro prefijo 0x3E
+                *position += 1; code++;
+                break;
+            case 0xf3: // prefijo REP
+            case 0xf2: // prefijo REPNE
+                instruction->flags_prefix |= FLAG_PREFIX_Prefix_REP; // se encontro prefijo 0x3E
+                *position += 1; code++;
+                break;
             default:
                 instruction->flags_prefix = 0;
                 break;
@@ -459,6 +469,46 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
 
             if (temp != NULL) free(temp); // liberar la memoria reservada
             return;
+        } else if (opcode >= 0xf6 && opcode <= 0xf7){
+            // en estas instrucciones el campo reg especifica la instruccion
+            // ademas son del tipo "instruccion mem/reg, inmediato"
+            string_rg = malloc(15);
+            uint32_t id_string_opcode = 0;
+            switch (instruction->Mod_rm.fields.reg) {
+                case 0b000: id_string_opcode = STRING_INSTRUCTION8086(TEST); break;
+                case 0b001: id_string_opcode = STRING_INSTRUCTION8086(ROR);  break; // no usada
+                case 0b010: id_string_opcode = STRING_INSTRUCTION8086(NOT); break;
+                case 0b011: id_string_opcode = STRING_INSTRUCTION8086(NEG); break;
+                case 0b100: id_string_opcode = STRING_INSTRUCTION8086(MUL); break;
+                case 0b101: id_string_opcode = STRING_INSTRUCTION8086(IMUL); break;
+                case 0b110: id_string_opcode = STRING_INSTRUCTION8086(DIV); break; 
+                case 0b111: id_string_opcode = STRING_INSTRUCTION8086(IDIV); break;
+            }
+            snprintf(string, size, "%s %s %s", 
+                get_string_instruction_by_id_8086(id_string_opcode), (opcode == 0xf7) ? "word" : "byte", // 1
+                get_mod_rm_8086(instruction)); 
+
+            return;
+        } else if (opcode >= 0xfe && opcode <= 0xff){
+            // en estas instrucciones el campo reg especifica la instruccion
+            // ademas son del tipo "instruccion mem/reg, inmediato"
+            string_rg = malloc(15);
+            uint32_t id_string_opcode = 0;
+            switch (instruction->Mod_rm.fields.reg) {
+                case 0b000: id_string_opcode = STRING_INSTRUCTION8086(INC); break;
+                case 0b001: id_string_opcode = STRING_INSTRUCTION8086(DEC);  break;
+                case 0b010: id_string_opcode = STRING_INSTRUCTION8086(CALL); break;
+                case 0b011: id_string_opcode = STRING_INSTRUCTION8086(CALL); break;
+                case 0b100: id_string_opcode = STRING_INSTRUCTION8086(JMP); break;
+                case 0b101: id_string_opcode = STRING_INSTRUCTION8086(JMP); break;
+                case 0b110: id_string_opcode = STRING_INSTRUCTION8086(PUSH); break; 
+                case 0b111: id_string_opcode = STRING_INSTRUCTION8086(ROR); break; // no se vale
+            }
+            snprintf(string, size, "%s %s %s", 
+                get_string_instruction_by_id_8086(id_string_opcode), (opcode == 0xff) ? "word" : "byte", // 1
+                get_mod_rm_8086(instruction)); 
+
+            return;
         }
 
 
@@ -617,6 +667,10 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                  * hay dos tipos de instrucciones que tienen NONE_FLAGS normalmente. las que no usan registros
                  * como aaa o aas, y las que si lo hacen como inc ax
                  */
+                case 0xec: snprintf(string, size, "IN AL, DX"); return;
+                case 0xed: snprintf(string, size, "IN AX, DX"); return;
+                case 0xee: snprintf(string, size, "OUT AL, DX"); return;
+                case 0xef: snprintf(string, size, "OUT AX, DX"); return;
                 case 0xa4: snprintf(string, size, "MOVSB BYTE ES:[DI], BYTE [SI]"); return;
                 case 0xa5: snprintf(string, size, "MOVSW WORD ES:[DI], WORD [SI]"); return;
                 case 0xA6: snprintf(string, size, "CMPSB BYTE ES:[SI], BYTE [DI]"); return;
@@ -665,6 +719,16 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                 case 0x9d: // popf
                 case 0x9e: // sahf
                 case 0x9f: // lahf
+                case 0xf2: // repne/repnz
+                case 0xf3: // rep/repe/repz
+                case 0xf4: // hlt
+                case 0xf5: // cmc
+                case 0xf8: // clc
+                case 0xf9: // stc
+                case 0xfa: // cli
+                case 0xfb: // sti
+                case 0xfc: // cld
+                case 0xfd: // std
                     // las instrucciones que no tienen flags no necesitan ser procesadas para estos casos:
                     snprintf(string, size, "%s",  
                             // obtener la instruccion via el ID flags de su tabla

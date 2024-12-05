@@ -48,7 +48,7 @@
  */
 #include <stdint.h>
 
-#include "debug_c.h"
+#include "./DebugLibC/time_code.h"
 
 typedef enum string_instrution_id_64 {
 
@@ -1377,6 +1377,8 @@ typedef struct Instruction_info
     #define FLAG_PREFIX_Prefix_DS        (1 << 5)
     #define FLAG_PREFIX_Prefix_FS        (1 << 6)
     #define FLAG_PREFIX_Prefix_GS        (1 << 7)
+    #define FLAG_PREFIX_Prefix_REP       FLAG_PREFIX_Prefix_SS | FLAG_PREFIX_Prefix_DS
+    #define FLAG_PREFIX_Prefix_LOCK      FLAG_PREFIX_Prefix_ES | FLAG_PREFIX_Prefix_DS
 } Instruction_info;
 
 #pragma pack(pop)
@@ -2166,13 +2168,13 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
     [0xde] = X87_MASK,
     [0xdf] = X87_MASK,
 
-    [0xe0] = STRING_INSTRU(STRING_INSTRUCTION8086(LOOPNE)),
+    [0xe0] = STRING_INSTRU(STRING_INSTRUCTION8086(LOOPNE)) | INMED8_MASK,
 
-    [0xe1] = STRING_INSTRU(STRING_INSTRUCTION8086(LOOPE)),
+    [0xe1] = STRING_INSTRU(STRING_INSTRUCTION8086(LOOPE)) | INMED8_MASK,
 
-    [0xe2] = STRING_INSTRU(STRING_INSTRUCTION8086(LOOP)),
+    [0xe2] = STRING_INSTRU(STRING_INSTRUCTION8086(LOOP)) | INMED8_MASK,
 
-    [0xe3] = STRING_INSTRU(STRING_INSTRUCTION8086(JCXZ)),
+    [0xe3] = STRING_INSTRU(STRING_INSTRUCTION8086(JCXZ)) | INMED8_MASK,
 
     [0xe4] = STRING_INSTRU(STRING_INSTRUCTION8086(IN)) | INMED8_MASK,
 
@@ -2182,13 +2184,13 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
 
     [0xe7] = STRING_INSTRU(STRING_INSTRUCTION8086(OUT)) | INMED8_MASK,
 
-    [0xe8] =  STRING_INSTRU(STRING_INSTRUCTION8086(CALL)) | 0x0,
+    [0xe8] =  STRING_INSTRU(STRING_INSTRUCTION8086(CALL)) | INMED16_MASK,
 
-    [0xe9] =  STRING_INSTRU(STRING_INSTRUCTION8086(JMP)),
+    [0xe9] =  STRING_INSTRU(STRING_INSTRUCTION8086(JMP))  | INMED16_MASK,
 
-    [0xea] = STRING_INSTRU(STRING_INSTRUCTION8086(JMP)),
+    [0xea] = STRING_INSTRU(STRING_INSTRUCTION8086(JMP)) | DISP_LOW_MASK | DISP_HIGH_MASK | INMED16_MASK | DIS_HIGH_MASK,
 
-    [0xeb] = STRING_INSTRU(STRING_INSTRUCTION8086(JMP)),
+    [0xeb] = STRING_INSTRU(STRING_INSTRUCTION8086(JMP)) | INMED8_MASK,
 
     [0xec] = STRING_INSTRU(STRING_INSTRUCTION8086(IN)),
 
@@ -2203,15 +2205,15 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
     [0b11110000] = STRING_INSTRU(STRING_INSTRUCTION8086(LOCK)) | MASK_PREFIX,                             // opcode(f0 -> 0b11110000) -> 0xF0 (equivalent: 0xF1) = prefijo LOCK
 
     // prefijo LOCK (no documentado)
-    [0b11110001] =STRING_INSTRU(STRING_INSTRUCTION8086(LOCK)) | UNDOCUMENTED_OPCODE_MASK | MASK_PREFIX,  // opcode(f1 -> 0b11110001) -> 0xF1 (equivalent: 0xF0) = prefijo LOCK
+    [0b11110001] = STRING_INSTRU(STRING_INSTRUCTION8086(LOCK)) | UNDOCUMENTED_OPCODE_MASK | MASK_PREFIX,  // opcode(f1 -> 0b11110001) -> 0xF1 (equivalent: 0xF0) = prefijo LOCK
 
     [0xf2] = STRING_INSTRU(STRING_INSTRUCTION8086(REPNE)),
 
-    [0xf3] = STRING_INSTRU(STRING_INSTRUCTION8086(REP)),
+    [0xf3] = STRING_INSTRU(STRING_INSTRUCTION8086(REP)) ,
 
     [0xf4] = STRING_INSTRU(STRING_INSTRUCTION8086(HLT)),
 
-    [0xf5] = STRING_INSTRU(STRING_INSTRUCTION8086(CMD)),
+    [0xf5] = STRING_INSTRU(STRING_INSTRUCTION8086(CMC)),
     
     // test/not/neg/mul/imul/div/idiv/ reg8/mem8
     /*
@@ -2247,14 +2249,14 @@ __attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086
      * cuando mod = 111 se vuelve en la instruccion 0xff con mod = 111, lo que
      * lo convierte en push mem16
      */
-    [0b11111110] = DISP_LOW_MASK, // opcode(fe -> 0b11111110)
+    [0b11111110] = DISP_LOW_MASK | MOD_RM_REG_MASK, // opcode(fe -> 0b11111110)
 
     // inc/dec/call/jmp/push reg16/mem16
     /*
      * cuando mod = 111, la instruccion se transforma en una instruccion no documentada
      * la cual equivale a la misma que mod == 110 en este caso(push mem16)
      */
-    [0b11111111] = DISP_LOW_MASK // opcode(ff -> 0b11111111)
+    [0b11111111] = DISP_LOW_MASK | MOD_RM_REG_MASK // opcode(ff -> 0b11111111)
     
 };
 

@@ -339,7 +339,6 @@ int main(){
         0xD9, 0x85, 0x34, 0x12,         // ESC(fld dword ptr [di      + 0x1234])
         0xD9, 0x86, 0x34, 0x12,         // ESC(fld dword ptr [bp      + 0x1234])
         0xD9, 0x87, 0x34, 0x12,         // ESC(fld dword ptr [bx      + 0x1234])
-
         // quinta tabla de instrucciones del x87
         0xDD, 0xD8,                     // ESC(fstp st(0))
         0xDD, 0xD9,                     // ESC(fstp st(1))
@@ -348,6 +347,42 @@ int main(){
         0xDD, 0xDD,                     // ESC(fstp st(5))
         0xDD, 0xDE,                     // ESC(fstp st(6))
         0xDD, 0xDF,                     // ESC(fstp st(7))
+
+        0xE0, 0x23,                     // loopne  0x25
+        0xE1, 0x45,                     // loope   0x49
+        0xE2, 0x45,                     // loop    0x45
+        0xE3, 0x55,                     // jcxz    0x57
+        0xE4, 0x22,                     // in  al, 0x22
+        0xE5, 0x33,                     // in  ax, 0x33
+        0xE6, 0x44,                     // out 0x44, al
+        0xE7, 0x55,                     // out 0x55, ax
+        0xE8, 0x11, 0x22,               // call 0x2214
+        0xE9, 0x22, 0x11,               // jmp  0x1128
+        0xEA, 0x22, 0x11, 0x33, 0x44,   // ljmp 0x4433:0x1122
+        0xEB, 0x12,                     // jmp  0x1f
+        0xEC,                           // in   al, dx
+        0xED,                           // in   ax, dx
+        0xEF,                           // out  dx, ax
+        0xF0, 0x00, 0x22,               // lock add byte ptr [bp + si], ah
+        0xF1,                           // lock no documentado para el 8086
+        0xF2,                           // repne/repnez
+        0xF3,                           // rep/repe/repz
+        0xF4,                           // hlt
+        0xF5,                           // cmc
+        0xF6, 0xFF,                     // idiv bh
+        0xF6, 0x34,                     // div  byte ptr [si]
+        0xF6, 0x11,                     // not  byte ptr [bx + di]
+        0xF7, 0xFF,                     // idiv di
+        0xF7, 0x34,                     // div  word ptr [si]
+        0xF7, 0x11,                     // not  word ptr [bx + di]
+        0xf8,                           // clc
+        0xf9,                           // stc
+        0xfa,                           // cli
+        0xfb,                           // sti
+        0xfc,                           // cld
+        0xfd,                           // std
+        0xfe, 0x00,                     // inc  byte ptr [bx + si]
+        0xff, 0x00,                     // inc  word ptr [bx + si]
     };
 
     // -Os -s -ffunction-sections -Wl,--gc-sections -fno-asynchronous-unwind-tables -Wl,--strip-all
@@ -360,7 +395,7 @@ int main(){
         &position,
         &instruccion, ENCODER_IN_16bits
     )) { // mientras dissamble devuelva 1, quedara instrucciones por desensamblar
-        //print_Instruction_info(&instruccion, ENCODER_IN_16bits);
+        print_Instruction_info(&instruccion, ENCODER_IN_16bits);
 
         /**/char* string = calloc(64, sizeof(char));
         get_string_Instruction_info_8086(&instruccion, string, 64);

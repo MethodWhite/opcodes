@@ -38,7 +38,7 @@
 //#include "stringx.h"
 //#include "instrutions_format.h"
 //#include "opcodes_prefix.h"
-#include "colors.h"
+#include "./DebugLibC/colors-C-C-plus-plus/colors.h"
 
 #define WORD_SIZE 256
 #define BLOCK_SLICES (256*4)/8
