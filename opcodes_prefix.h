@@ -1216,9 +1216,7 @@ typedef struct Mod_rm { // estructura para representar el mod/rm (¿Register/Mem
                             */
         } fields;
         uint8_t byte;
-    }
-
-    
+    };
 } Mod_rm;
 
 /*
@@ -1452,11 +1450,13 @@ typedef struct Instruction_info
 // tambien se usara para el x87 decoder:
 //#define MOD_RM_REG_MASK  (1 << 0)
 
+#include "./include/section_macro.h"
+
 // indica que el opcode para el coprocesador (segundo byte de la instruccion) tiene tres bits de opcode que
 // sirven para indicar que registro ST se quiere acceder usar modificar u otro
 #define ST_REGISTER (1 << 1)
 #define TABLE_INSTRUCTIONS_8087(name, number) name##_table_##number
-__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 0)[] = {
+ATTRIBUTE_SECTION(".instruccion") static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 0)[] = {
     // [0xd8] = X87_MASK,
 
     // fcom -> 0xd8 0xd0 - 0xd8 0xd7
@@ -1479,7 +1479,7 @@ __attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8
     [0b11011110] = ST_REGISTER, // fcomp ST(6)
     [0b11011111] = ST_REGISTER, // fcomp ST(7)
 };
-__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 1)[] = {
+ATTRIBUTE_SECTION(".instruccion") static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 1)[] = {
     // [0xd9] = X87_MASK,
 
     // MF(00) -> 32bits real
@@ -1537,18 +1537,18 @@ __attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8
     [0b11001111] = ST_REGISTER, // ESC(fxch st(7))
 
 };
-__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 2)[] = {
+ATTRIBUTE_SECTION(".instruccion") static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 2)[] = {
     // [0xda] = X87_MASK,
 };
-__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 3)[] = {
+ATTRIBUTE_SECTION(".instruccion") static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 3)[] = {
     // [0xdb] = X87_MASK,
 
 };
-__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 4)[] = {
+ATTRIBUTE_SECTION(".instruccion") static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 4)[] = {
     // [0xdc] = X87_MASK,
 
 };
-__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 5)[] = {
+ATTRIBUTE_SECTION(".instruccion") static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 5)[] = {
     // [0xdd] = X87_MASK,
     // 1101 1 MF(10) 1
 
@@ -1573,16 +1573,16 @@ __attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8
     [0b11011110] = ST_REGISTER, // ESC(fstp st(6))
     [0b11011111] = ST_REGISTER, // ESC(fstp st(7))
 };
-__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 6)[] = {
+ATTRIBUTE_SECTION(".instruccion") static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 6)[] = {
     // [0xde] = X87_MASK,
 
 };
-__attribute__((__section__(".instruccion"))) static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 7)[] = {
+ATTRIBUTE_SECTION(".instruccion") static uint8_t TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 7)[] = {
     // [0xdf] = X87_MASK,
 
 };
 
-__attribute__((__section__(".instruccion"))) static uint8_t *my_instruccion_8087_table[] = {
+ATTRIBUTE_SECTION(".instruccion") static uint8_t *my_instruccion_8087_table[] = {
     TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 0),
     TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 1),
     TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 2),
@@ -1592,7 +1592,7 @@ __attribute__((__section__(".instruccion"))) static uint8_t *my_instruccion_8087
     TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 6),
     TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 7)
 };
-__attribute__((__section__(".instruccion"))) static size_t my_instruccion_8087_table_sizes[] = {
+ATTRIBUTE_SECTION(".instruccion") static size_t my_instruccion_8087_table_sizes[] = {
     sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 0))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 0)[0]),
     sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 1))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 1)[0]),
     sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 2))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 2)[0]),
@@ -1603,7 +1603,7 @@ __attribute__((__section__(".instruccion"))) static size_t my_instruccion_8087_t
     sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 7))/sizeof(TABLE_INSTRUCTIONS_8087(my_instruccion_8087, 7)[0])
 };
 
-__attribute__((__section__(".instruccion"))) static uint32_t my_instruccion_8086[] = {
+ATTRIBUTE_SECTION(".instruccion") static uint32_t my_instruccion_8086[] = {
     [0b00000000] = REG_MEM_8_MASK  | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)), // opcode(00 -> 0b00000000) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
     [0b00000001] = REG_MEM_16_MASK | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)), // opcode(01 -> 0b00000001) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
     [0b00000010] = REG_MEM_8_MASK  | MOD_RM_REG_MASK | DISP_LOW_MASK | DISP_HIGH_MASK | STRING_INSTRU(STRING_INSTRUCTION8086(ADD)), // opcode(02 -> 0b00000010) -> (add) (mod, reg, r/m), (disp_low), (disp_high)
