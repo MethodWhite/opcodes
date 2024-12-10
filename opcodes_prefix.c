@@ -133,6 +133,22 @@ int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instru
      * [BP + DI]
      * 
      */
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,
+    INIT_TYPE_FUNC_DBG(int, dissamble)
+        TYPE_DATA_DBG(const uint8_t*, "start = %p")
+        TYPE_DATA_DBG(const uint8_t*, "end = %p\n\t\t")
+        TYPE_DATA_DBG(size_t*, "*position = %zu")
+        TYPE_DATA_DBG(Instruction_info*, "*instruction = %p")
+        TYPE_DATA_DBG(encoder_x86, "*encoder = %d")
+    END_TYPE_FUNC_DBG,
+    start, end, position, instruction, encoder);
+    #define MAX_CODE_SIZE 1024 *64
+    // Ajustar MAX_CODE_SIZE a un límite razonable, por ejemplo, 64 KB para el 8086.
+    if (start >= end || (size_t)(end - start) > MAX_CODE_SIZE) {
+        fprintf(stderr, "Error: rango de memoria inválido.\n");
+        return 0;
+    }
+
     if (0 == (size_t)(end - start)) return 0;
     uint8_t *code = start;
 
@@ -208,8 +224,13 @@ int dissamble(const uint8_t* start, const uint8_t* end, size_t* position, Instru
             *position += 1; code++;
             if (instruction->Mod_rm.fields.mod == 0b00) {
                 // si 0b110 acceso directo 
-                if (instruction->Mod_rm.fields.R_M == 0b110) 
-                    exit(0);
+                if (instruction->Mod_rm.fields.R_M == 0b110) {
+                    //DEBUG_PRINT(DEBUG_LEVEL_ERROR, "[!] instruction->Mod_rm.fields.R_M == 0b110");
+                    //exit(0);
+                    instruction->displacement.ui16 =  *(uint16_t*)(code);
+                    *position += 2; code+=2;
+                    return 1;
+                }
             } else {
                 if ((instruction->flags & DISP_LOW_MASK) || (instruction->flags & DISP_HIGH_MASK)){
                     if (instruction->Mod_rm.fields.mod == 0b01) {
@@ -351,19 +372,36 @@ static inline char *get_string_instruction_by_id_8086(string_instrution_id_8086 
 }
 
 static inline const char* get_reg_8086(uint8_t reg, uint8_t w) {
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,
+        INIT_TYPE_FUNC_DBG(static inline const char*, get_reg_8086)
+            TYPE_DATA_DBG(Instruction_info*, "reg = 0x%x")
+            TYPE_DATA_DBG(Instruction_info*, "w = %x")
+        END_TYPE_FUNC_DBG,
+    reg, w);
     // esta funcion se usa para obtener un registro atraves del capo RM y REG de mod/rm:
     return reg_8086[w][reg];
 }    // en caso de que W = 0 entonces reg8, en caso de W = 1 entonces reg16
 
 static const char* get_mod_rm_8086(Instruction_info *Instruction) {
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,
+        INIT_TYPE_FUNC_DBG(static const char*, get_mod_rm_8086)
+            TYPE_DATA_DBG(Instruction_info*, "Instruction = %p")
+        END_TYPE_FUNC_DBG,
+    Instruction);
     Mod_rm mod = Instruction->Mod_rm;
     // en el caso de ser mod 0b11 el campo rm se usa como otro registro:
     // Instruction->opcode1.opcode_bits.b1 es el bit W 0000 000W
     if (mod.fields.mod == 3) return get_reg_8086(mod.fields.R_M, Instruction->opcode1.opcode_bits.b1);
+    else if (mod.fields.mod == 3 && mod.fields.R_M == 0b110) return NULL; // acceso directo
     else return Mod_rm_disp_8086[mod.fields.mod][mod.fields.R_M];
 }
 
 const char* get_prefix_by_flags_prefix(uint8_t flags_prefix){
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,
+        INIT_TYPE_FUNC_DBG(const char*, get_prefix_by_flags_prefix)
+            TYPE_DATA_DBG(Instruction_info*, "flags_prefix = %d")
+        END_TYPE_FUNC_DBG,
+    flags_prefix);
     switch (flags_prefix)
     {
         case FLAG_PREFIX_Prefix_ES: return reg_seg[0];
@@ -377,19 +415,28 @@ const char* get_prefix_by_flags_prefix(uint8_t flags_prefix){
 }
 
 void get_string_Instruction_info_8086(Instruction_info *instruction, char* string, size_t size) {
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,
+    INIT_TYPE_FUNC_DBG(void, get_string_Instruction_info_8086)
+        TYPE_DATA_DBG(Instruction_info*, "instruction = %p")
+        TYPE_DATA_DBG(char*, "string = %p")
+        TYPE_DATA_DBG(size_t, "position = %zu")
+    END_TYPE_FUNC_DBG,
+    instruction, string, size);
     uint32_t opcode = instruction->opcode1.opcode_byte.byte;
     //print_Instruction_info(instruction, ENCODER_IN_16bits);
     char* string_opcode = NULL;
     if (opcode >= opcodes_8086_ESC && opcode <= 0xdf) {
-
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "instrucciones x87 no implementadas\n");
+        return;
     } else {
         char* string_rg = NULL, *string_modrm = NULL;
         char* temp = NULL;  // se usa para operaciones temporales o intermedias como formateos. recordar liberar siempre al finalizar
         char estado = 0;   // se usa en algunos casos para indicar si es necesario liberar o no un buffer
         if (opcode >= opcodes_8086_ADD_inmmed8 && opcode <= opcodes_8086_ADD_inmmed8_reg_mem16){
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones 128 - 131\n");
             // en estas instrucciones el campo reg especifica la instruccion
             // ademas son del tipo "instruccion mem/reg, inmediato"
-            string_rg = malloc(15);
+            debug_malloc(char, string_rg, 20);
             uint32_t id_string_opcode = 0;
             switch (instruction->Mod_rm.fields.reg) {
                 case 0b000: id_string_opcode = STRING_INSTRUCTION8086(ADD); break;
@@ -409,14 +456,39 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                                                            // reg16/mem16, inmed8;  W = 1
                 snprintf(string_rg, size, "0x%02x", instruction->immediate.ui8); 
             }
-            char* temp2 = malloc(10);
+
+            // para cuando las instrucciones tiene mod/rm y prefijos
+            char* temp2 ;
+            debug_malloc(char, temp2, 20);
             if(instruction->flags_prefix != 0) {
-                temp = string_modrm = malloc(10);
-                snprintf(string_modrm, size, "%s:%s", get_prefix_by_flags_prefix(instruction->flags_prefix), get_mod_rm_8086(instruction)); 
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruccion con mod-rm y prefijo\n");
+                //(instruction->Mod_rm.fields.mod == 3 && instruction->Mod_rm.fields.R_M == 0b110) ? : get_mod_rm_8086(instruction);
+                debug_malloc(char, temp, 20);
+                string_modrm = temp;
+                if (instruction->Mod_rm.fields.mod == 0 && instruction->Mod_rm.fields.R_M == 0b110) {
+                        snprintf(string_modrm, size, "%s:%0x%x", get_prefix_by_flags_prefix(instruction->flags_prefix), instruction->displacement.ui16);
+                } else {
+                    const char *temp_modrm = get_mod_rm_8086(instruction);
+                    if (string_modrm == temp_modrm) {
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_mod_rm_8086 return NULL\n");
+                        exit(1);
+                    }
+                    snprintf(string_modrm, size, "%s:%s", get_prefix_by_flags_prefix(instruction->flags_prefix), temp_modrm);
+                }
                 snprintf(temp2, size, string_modrm, instruction->displacement.ui16); // añadir el desplazamiento del mod rm
                 free(temp);
             } else {
-                string_modrm = get_mod_rm_8086(instruction);
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruccion con mod-rm sin prefijo\n");
+                if (instruction->Mod_rm.fields.mod == 0 && instruction->Mod_rm.fields.R_M == 0b110) {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "Error, no implementado mod = 0, rm = 0b110\n");
+                    exit(1);
+                } else {
+                    string_modrm = get_mod_rm_8086(instruction);
+                    if (string_modrm == NULL) {
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_mod_rm_8086 return NULL\n");
+                        exit(1);
+                    }
+                }
                 snprintf(temp2, size, string_modrm, instruction->displacement.ui16); // añadir el desplazamiento del mod rm
             }
             temp = string_modrm = temp2;
@@ -430,9 +502,10 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
             if (temp != NULL) free(temp); // liberar la memoria reservada
             return;
         } else if (opcode >= opcodes_8086_ROL_reg_mem8_1 && opcode <= opcodes_8086_ROL_reg_mem16_cl){
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones con opcode 208 - 211\n");
             // en estas instrucciones el campo reg especifica la instruccion
             // ademas son del tipo "instruccion mem/reg, inmediato"
-            string_rg = malloc(15);
+            debug_malloc(char, string_rg, 20);
             uint32_t id_string_opcode = 0;
             switch (instruction->Mod_rm.fields.reg) {
                 case 0b000: id_string_opcode = STRING_INSTRUCTION8086(ROL); break;
@@ -450,14 +523,23 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
             } else if (opcode == opcodes_8086_ROL_reg_mem8_cl || opcode == opcodes_8086_ROL_reg_mem16_cl) {
                 snprintf(string_rg, size, "%s", "CL"); 
             }
-            char* temp2 = malloc(10);
+            char* temp2;
+            debug_malloc(char, temp2, 20);
+
+            // variable temporal para almacenar un mod/rm string estatico
+            const char *temp_modrm = get_mod_rm_8086(instruction);
+            if (string_modrm == temp_modrm) {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_mod_rm_8086 return NULL\n");
+                exit(1);
+            }
             if(instruction->flags_prefix != 0) {
-                temp = string_modrm = malloc(10);
-                snprintf(string_modrm, size, "%s:%s", get_prefix_by_flags_prefix(instruction->flags_prefix), get_mod_rm_8086(instruction)); 
+                debug_malloc(char, string_modrm, 20);
+                temp = string_modrm;
+                snprintf(string_modrm, size, "%s:%s", get_prefix_by_flags_prefix(instruction->flags_prefix), temp_modrm); 
                 snprintf(temp2, size, string_modrm, instruction->displacement.ui16); // añadir el desplazamiento del mod rm
                 free(temp);
             } else {
-                string_modrm = get_mod_rm_8086(instruction);
+                string_modrm = temp_modrm;
                 snprintf(temp2, size, string_modrm, instruction->displacement.ui16); // añadir el desplazamiento del mod rm
             }
             temp = string_modrm = temp2;
@@ -470,9 +552,10 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
             if (temp != NULL) free(temp); // liberar la memoria reservada
             return;
         } else if (opcode >= opcodes_8086_TEST_reg_mem8_inmmed8 && opcode <= opcodes_8086_TEST_reg_mem16_inmmed16){
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones con opcode 246 - 247\n");
             // en estas instrucciones el campo reg especifica la instruccion
             // ademas son del tipo "instruccion mem/reg, inmediato"
-            string_rg = malloc(15);
+            debug_malloc(char, string_rg, 20);
             uint32_t id_string_opcode = 0;
             switch (instruction->Mod_rm.fields.reg) {
                 case 0b000: id_string_opcode = STRING_INSTRUCTION8086(TEST); break;
@@ -484,15 +567,21 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                 case 0b110: id_string_opcode = STRING_INSTRUCTION8086(DIV); break; 
                 case 0b111: id_string_opcode = STRING_INSTRUCTION8086(IDIV); break;
             }
+            const char *temp_modrm = get_mod_rm_8086(instruction);
+            if (string_modrm == temp_modrm) {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_mod_rm_8086 return NULL\n");
+                exit(1);
+            }
             snprintf(string, size, "%s %s %s", 
                 get_string_instruction_by_id_8086(id_string_opcode), (opcode == opcodes_8086_TEST_reg_mem16_inmmed16) ? "word" : "byte", // 1
-                get_mod_rm_8086(instruction)); 
+                temp_modrm); 
 
             return;
         } else if (opcode >= opcodes_8086_INC_reg_mem8 && opcode <= opcodes_8086_INC_mem16){
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones con opcode 254 - 255\n");
             // en estas instrucciones el campo reg especifica la instruccion
             // ademas son del tipo "instruccion mem/reg, inmediato"
-            string_rg = malloc(15);
+            debug_malloc(char, string_rg, 20);
             uint32_t id_string_opcode = 0;
             switch (instruction->Mod_rm.fields.reg) {
                 case 0b000: id_string_opcode = STRING_INSTRUCTION8086(INC); break;
@@ -504,63 +593,125 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                 case 0b110: id_string_opcode = STRING_INSTRUCTION8086(PUSH); break; 
                 case 0b111: id_string_opcode = STRING_INSTRUCTION8086(ROR); break; // no se vale
             }
+            const char *temp_modrm = get_mod_rm_8086(instruction);
+            if (string_modrm == temp_modrm) {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_mod_rm_8086 return NULL\n");
+                exit(1);
+            }
             snprintf(string, size, "%s %s %s", 
                 get_string_instruction_by_id_8086(id_string_opcode), (opcode == opcodes_8086_INC_mem16) ? "word" : "byte", // 1
-                get_mod_rm_8086(instruction)); 
+                temp_modrm); 
 
             return;
         }
 
 
-        // obtener el string de la instruccion atrabes de su flags obteniada atraves de la tabla de instrucciones
+        // obtener el string de la instruccion a traves de su flags obteniadas de la tabla de instrucciones
         string_opcode = get_string_instruction_by_id_8086(
             (my_instruccion_8086[instruction->opcode1.opcode_byte.byte]) >> 24);
 
         if (instruction->flags & MOD_RM_REG_MASK){
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones con mod_rm\n");
             uint8_t opcode = instruction->opcode1.opcode_byte.byte;
             if(
                 opcode == opcodes_8086_MOV_mem8_inmmed8 || opcode == opcodes_8086_MOV_mem16_inmmed16
-            ) goto call_far_create;
+            ) {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones con opcode 198 - 199\n");
+                goto call_far_create;
+            }
+
             // si se trata de la instruccion LEA  reg, [BX + DI + mem16] solo hay una forma de analizarla:
             if (
                 opcode == opcodes_8086_LEA_mem16
-                ) instruction->opcode1.opcode_bits_final.d = 1;
-            else if (opcode == opcodes_8086_LES_mem16 || opcodes_8086_LDS_mem16 == opcode) {
+            ) {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones con opcode 141\n");
+                instruction->opcode1.opcode_bits_final.d = 1;
+            } else if (opcode == opcodes_8086_LES_mem16 || opcodes_8086_LDS_mem16 == opcode) {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones con opcode 196 - 197\n");
                 instruction->opcode1.opcode_bits_final.d = 1;
                 instruction->opcode1.opcode_bits.b1 = 1; // estas instrucciones solo son en 16bits
             }
 
             if (instruction->opcode1.opcode_bits_final.d == 0) {
-                if (instruction->flags_prefix != 0) {
-                    
-                    // la instruccion usa un registro de segmento
-                    temp = string_modrm = malloc(10);
-                    snprintf(string_modrm, size, "%s:%s", get_prefix_by_flags_prefix(instruction->flags_prefix), get_mod_rm_8086(instruction)); 
-                } else string_modrm = get_mod_rm_8086(instruction);
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones con bit D = 0\n");
 
+                const char *temp_modrm = get_mod_rm_8086(instruction);
+                if (string_modrm == temp_modrm) {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_mod_rm_8086 return NULL\n");
+                    exit(1);
+                }
+                if (instruction->flags_prefix != 0) {
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruccion con prefijo\n");
+                    // la instruccion usa un registro de segmento
+                    debug_malloc(char, string_modrm, 20);
+                    temp = string_modrm;
+                    if (instruction->Mod_rm.fields.mod == 0 && instruction->Mod_rm.fields.R_M == 0b110) {
+                        //DEBUG_PRINT(DEBUG_LEVEL_INFO, "displacement = 0x%x\n", instruction->displacement.ui16);
+                        //DEBUG_PRINT(DEBUG_LEVEL_INFO, "string_rg = 0x%p\n", string_rg);
+                        //DEBUG_PRINT(DEBUG_LEVEL_INFO, "size = %zu\n", size);
+                        //DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruction->flags_prefix = %s\n", get_prefix_by_flags_prefix(instruction->flags_prefix));
+                        snprintf(string_modrm, size, "[%s:0x%x]", 
+                            get_prefix_by_flags_prefix(instruction->flags_prefix),
+                            instruction->displacement.ui16);
+                            
+                    } else {
+                        DEBUG_PRINT(DEBUG_LEVEL_INFO, "temp_modrm = %s\n", temp_modrm);
+                        snprintf(string_modrm, size, "%s:%s", get_prefix_by_flags_prefix(instruction->flags_prefix), temp_modrm); 
+                    }
+                } else {
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruccion sin prefijo\n");
+                    if (instruction->Mod_rm.fields.mod == 0 && instruction->Mod_rm.fields.R_M == 0b110) {
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "Error, no implementado mod = 0, rm = 0b110\n");
+                        exit(1);
+                    }
+                    string_modrm = temp_modrm;
+                }
                 // para el opcode 0x8c el campo reg especifica un registro de segmento:
                 string_rg    = (opcode == opcodes_8086_MOV_reg_mem16_segreg) ?
                     reg_seg[instruction->Mod_rm.fields.reg] :
                     get_reg_8086(instruction->Mod_rm.fields.reg, instruction->opcode1.opcode_bits.b1);
-
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "string_rg = %s\n", string_rg);
             } else {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruccion con bit D = 1\n");
+                const char *temp_modrm = get_mod_rm_8086(instruction);
+                if (string_modrm == temp_modrm) {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_mod_rm_8086 return NULL\n");
+                    exit(1);
+                }
+
                  // para el opcode 0x8c el campo reg especifica un registro de segmento:
                 string_modrm = (opcode == opcodes_8086_MOV_segreg_reg_mem16) ?
                     reg_seg[instruction->Mod_rm.fields.reg] :
                     get_reg_8086(instruction->Mod_rm.fields.reg, instruction->opcode1.opcode_bits.b1);
                 if (instruction->flags_prefix != 0) {
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruccion con prefijo\n");
                     // la instruccion usa un registro de segmento
-                    temp = string_rg = malloc(10);
-                    snprintf(string_rg, size, "%s:%s", get_prefix_by_flags_prefix(instruction->flags_prefix), get_mod_rm_8086(instruction)); 
-                } else string_rg = get_mod_rm_8086(instruction);
+                    debug_malloc(char, string_rg, 20);
+                    temp = string_rg;
+                    if (instruction->Mod_rm.fields.mod == 0 && instruction->Mod_rm.fields.R_M == 0b110){
+                        snprintf(string_rg, size, "%s:0x%x", get_prefix_by_flags_prefix(instruction->flags_prefix), instruction->displacement.ui16);
+                    } else {
+                        snprintf(string_rg, size, "%s:%s", get_prefix_by_flags_prefix(instruction->flags_prefix), temp_modrm); 
+                    }
+                } else {
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruccion sin prefijo\n");
+                    if (instruction->Mod_rm.fields.mod == 0 && instruction->Mod_rm.fields.R_M == 0b110) {
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "Error, no implementado mod = 0, rm = 0b110\n");
+                        exit(1);
+                    } else {
+                        string_rg = temp_modrm;
+                    }
+                }
             }
             if (instruction->opcode1.opcode_byte.byte == opcodes_8086_POP_reg_mem16) {
                 // solo para "pop word ptr [reg + reg]"
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruccion 143: pop word ptr [reg + reg]\n");
                 snprintf(string, size, "%s %s %s", string_opcode, 
                     (instruction->opcode1.opcode_bits.b1 == 0) ? "byte" : "word",
                     string_rg
                 );
             }else {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "generando instruccion %s....\n", string_opcode);
                 snprintf(string, size, "%s %s %s, %s", string_opcode,
                     (instruction->opcode1.opcode_bits_final.d == 0 && instruction->Mod_rm.fields.mod != 0b11) 
                     ? (instruction->opcode1.opcode_bits.b1 == 0) ? "byte" : "word" : "",
@@ -575,9 +726,11 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
             (instruction->opcode1.opcode_byte.byte >= opcodes_8086_MOV_al_mem8 && instruction->opcode1.opcode_byte.byte <= opcodes_8086_MOV_mem16_ax) ||
             (instruction->opcode1.opcode_byte.byte >= opcodes_8086_TEST_al_inmmed8 && instruction->opcode1.opcode_byte.byte <= opcodes_8086_TEST_ax_inmmed16)
         ){
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones 160 - 163, 168 - 169\n");
             mem = "[0x%x]\0";
         }
         if (instruction->flags & INMED16_MASK || instruction->flags & INMED8_MASK) {
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones con valores inmediatos de 8 o 16bits\n");
             uint8_t opcode = instruction->opcode1.opcode_byte.byte;
 
             switch(opcode){
@@ -590,22 +743,28 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                 case opcodes_8086_JMP_FAR:
                 case opcodes_8086_JMP_NEAR:
                 case opcodes_8086_JMP_SHORT:
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones CALL FAR/NEAR, JMP SHORT/NEAR/FAR, RET NEAR/FAR\n");
                     goto call_far_create;
                     
                 default:
                     if (opcode >= opcodes_8086_MOV_al_inmmed8 && opcode <= opcodes_8086_MOV_di_inmmed16){
+                        DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones 176 - 191\n");
                         goto call_far_create;
                     }
                     break;
             }
             
             if (instruction->opcode1.opcode_bits_final.d == 1) {
-                temp = string_modrm = malloc(10);
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "Bit D = 1\n");
+                debug_malloc(char, string_modrm, 20);
+                temp = string_modrm;
                 snprintf(string_modrm, size, (char*)mem, instruction->immediate.ui16);
                 string_rg    = get_reg_8086(instruction->Mod_rm.fields.reg, instruction->opcode1.opcode_bits.b1);
             } else {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "Bit D = 0\n");
                 string_modrm = get_reg_8086(instruction->Mod_rm.fields.reg, instruction->opcode1.opcode_bits.b1);
-                temp = string_rg = malloc(10);
+                debug_malloc(char, string_rg, 20);
+                temp = string_rg;
                 snprintf(string_rg, size, (char*)mem, instruction->immediate.ui16);
             }
             snprintf(string, size, "%s %s, %s", string_opcode,string_modrm, string_rg );

@@ -60,7 +60,7 @@ int main(){
     uint8_t instrucciones[] = {
         // instruccion ilegal:
         //0x67, 0x12, 0x04, 0x20, // adc al, [al+ah] // 0x04 codifica desplazamiento bajo
-        opcodes_8086_ADD_mem8,               0x80, 0x43, 0x65,             // add  byte ptr [bx + si + 0x6543], al
+        /*opcodes_8086_ADD_mem8,               0x80, 0x43, 0x65,             // add  byte ptr [bx + si + 0x6543], al
         opcodes_8086_ADD_mem16,              0xa8, 0x43, 0x65,             // add  word ptr [bx + si + 0x6543], bp
         opcodes_8086_ADD_mem8_inverse,       0x87, 0x34, 0x12,             // add  al, [bx+0x1234]
         opcodes_8086_ADD_mem16_inverse,      0x87, 0x34, 0x12,             // add  ax, [bx+0x1234]
@@ -385,7 +385,8 @@ int main(){
         opcodes_8086_CLD,                                                   // cld
         opcodes_8086_STD,                                                   // std
         opcodes_8086_INC_reg_mem8,          0x00,                           // inc  byte ptr [bx + si]
-        opcodes_8086_INC_mem16,             0x00,                           // inc  word ptr [bx + si]
+        opcodes_8086_INC_mem16,             0x00,                           // inc  word ptr [bx + si]*/
+        Prefix_CS, opcodes_8086_MOV_reg8, 0x16, 0x76, 0x14,                 // mov byte ptr cs:[0x1476], dl
     };
 
     // -Os -s -ffunction-sections -Wl,--gc-sections -fno-asynchronous-unwind-tables -Wl,--strip-all
