@@ -579,21 +579,26 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
         }
         if (instruction->flags & INMED16_MASK || instruction->flags & INMED8_MASK) {
             uint8_t opcode = instruction->opcode1.opcode_byte.byte;
-            if(
-                opcode == opcodes_8086_CALL_FAR || // call far
-                (
-                    // mov reg, inmed
-                    opcode >= opcodes_8086_MOV_al_inmmed8 && opcode <= opcodes_8086_MOV_di_inmmed16) || (
 
-                    // ret near inmed16
-                    opcode == undocumented_opcodes_8086_RET_NEAR_inmmed16_intraseg ) || (opcode == opcodes_8086_RET_NEAR_inmmed16_intraseg) ||( // ret(0xc2) near inmed16 no documentado
-                    // el opcode 0xc2 es ret near solo en el 8086
-
-                    // ret far inmed16
-                    opcode == undocumented_opcodes_8086_RET_NEAR_inmmed16_intersegment ) || (opcode == opcodes_8086_RET_NEAR_inmmed16_intersegment)  // ret(0xca) far inmed16 no documentado
-                    // el opcode 0xca es ret far solo en el 8086
-
-            ) goto call_far_create;
+            switch(opcode){
+                case opcodes_8086_CALL_FAR:
+                case undocumented_opcodes_8086_RET_NEAR_inmmed16_intraseg:
+                case opcodes_8086_RET_NEAR_inmmed16_intraseg:
+                case undocumented_opcodes_8086_RET_NEAR_inmmed16_intersegment:
+                case opcodes_8086_RET_NEAR_inmmed16_intersegment:
+                case opcodes_8086_CALL_NEAR:
+                case opcodes_8086_JMP_FAR:
+                case opcodes_8086_JMP_NEAR:
+                case opcodes_8086_JMP_SHORT:
+                    goto call_far_create;
+                    
+                default:
+                    if (opcode >= opcodes_8086_MOV_al_inmmed8 && opcode <= opcodes_8086_MOV_di_inmmed16){
+                        goto call_far_create;
+                    }
+                    break;
+            }
+            
             if (instruction->opcode1.opcode_bits_final.d == 1) {
                 temp = string_modrm = malloc(10);
                 snprintf(string_modrm, size, (char*)mem, instruction->immediate.ui16);
@@ -760,14 +765,21 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                                 reg_8086[1][instruction->opcode1.opcode_byte.byte - opcodes_8086_XCHG_ax_ax]
                             );
                         return;
-                    } else if (opcode == opcodes_8086_CALL_FAR) {
+                    } else if (opcode == opcodes_8086_CALL_FAR || opcode == opcodes_8086_JMP_FAR) {
                         snprintf(string, size, "%s FAR 0x%04x:0x%04x",
                         // obtener la instruccion via el ID flags de su tabla
-                            get_string_instruction_by_id_8086(STRING_INSTRUCTION8086(CALL)),
+                            get_string_instruction_by_id_8086(instruction_8086[opcode]),
                                 instruction->displacement.ui16, instruction->immediate.ui16
                             );
                         return;
-                    } else if (opcode == opcodes_8086_RET_intersegment || opcode == opcodes_8086_RET_NEAR_inmmed16_intersegment) {
+                    } else if (opcode == opcodes_8086_CALL_NEAR || opcode == opcodes_8086_JMP_NEAR) {
+                        snprintf(string, size, "%s NEAR 0x%04x",
+                        // obtener la instruccion via el ID flags de su tabla
+                            get_string_instruction_by_id_8086(instruction_8086[opcode]),
+                                instruction->immediate.ui16
+                            );
+                        return;
+                    }else if (opcode == opcodes_8086_RET_intersegment || opcode == opcodes_8086_RET_NEAR_inmmed16_intersegment) {
                         snprintf(string, size, "%s FAR 0x%04x",
                         // obtener la instruccion via el ID flags de su tabla
                             get_string_instruction_by_id_8086(STRING_INSTRUCTION8086(RET)),
