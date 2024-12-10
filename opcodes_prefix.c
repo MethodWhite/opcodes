@@ -768,14 +768,14 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                     } else if (opcode == opcodes_8086_CALL_FAR || opcode == opcodes_8086_JMP_FAR) {
                         snprintf(string, size, "%s FAR 0x%04x:0x%04x",
                         // obtener la instruccion via el ID flags de su tabla
-                            get_string_instruction_by_id_8086(instruction_8086[opcode]),
+                            get_string_instruction_by_id_8086((my_instruccion_8086[opcode] & 0xff000000) >> 24),
                                 instruction->displacement.ui16, instruction->immediate.ui16
                             );
                         return;
                     } else if (opcode == opcodes_8086_CALL_NEAR || opcode == opcodes_8086_JMP_NEAR) {
                         snprintf(string, size, "%s NEAR 0x%04x",
                         // obtener la instruccion via el ID flags de su tabla
-                            get_string_instruction_by_id_8086(instruction_8086[opcode]),
+                            get_string_instruction_by_id_8086((my_instruccion_8086[opcode] & 0xff000000) >> 24),
                                 instruction->immediate.ui16
                             );
                         return;
@@ -786,7 +786,15 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                                 instruction->immediate.ui16
                             );
                         return;
-                    } else if(opcode >= opcodes_8086_MOV_al_inmmed8 && opcode <= opcodes_8086_MOV_di_inmmed16 ) {
+                    } else if(opcode == opcodes_8086_JMP_SHORT) {
+                        snprintf(string, size, "%s SHORT 0x%02x",
+                        // obtener la instruccion via el ID flags de su tabla
+                            get_string_instruction_by_id_8086(STRING_INSTRUCTION8086(JMP)),
+                                instruction->immediate.ui16
+                            );
+                        return;
+                    }
+                    else if(opcode >= opcodes_8086_MOV_al_inmmed8 && opcode <= opcodes_8086_MOV_di_inmmed16 ) {
                         snprintf(string, size, "%s %s, 0x%04x",
                         // obtener la instruccion via el ID flags de su tabla
                         get_string_instruction_by_id_8086(STRING_INSTRUCTION8086(MOV)),
