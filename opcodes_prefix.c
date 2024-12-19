@@ -632,9 +632,18 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                 instruction->opcode1.opcode_bits.b1 = 1; // estas instrucciones solo son en 16bits
             }
 
+            bool exception_opcodes_8086_MOV_segreg_reg_mem16 = false;
+            if (instruction->opcode1.opcode_byte.byte == opcodes_8086_MOV_segreg_reg_mem16) {
+                instruction->opcode1.opcode_bits.b1 = 1; /*
+                Para estas instrucciones de tipo mov <seg reg>, <reg>, reg sera siempre un registro de 16bits
+                */
+               DEBUG_PRINT(DEBUG_LEVEL_INFO, "excepcion activada\n");
+               exception_opcodes_8086_MOV_segreg_reg_mem16 = true;
+            }
+
             if (instruction->opcode1.opcode_bits_final.d == 0) {
                 DEBUG_PRINT(DEBUG_LEVEL_INFO, "instrucciones con bit D = 0\n");
-
+                
                 const char *temp_modrm = get_mod_rm_8086(instruction);
                 if (string_modrm == temp_modrm) {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_mod_rm_8086 return NULL\n");
@@ -703,19 +712,32 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                     }
                 }
             }
-            if (instruction->opcode1.opcode_byte.byte == opcodes_8086_POP_reg_mem16) {
+            if (
+                instruction->opcode1.opcode_byte.byte == opcodes_8086_POP_reg_mem16 &&
+                exception_opcodes_8086_MOV_segreg_reg_mem16 == false /* 
+                si la excepcion para la instruccion opcodes_8086_MOV_segreg_reg_mem16 no ocurrio
+                */
+                ) {
                 // solo para "pop word ptr [reg + reg]"
-                DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruccion 143: pop word ptr [reg + reg]\n");
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "instruccion 143: pop word ptr [reg + reg], exception_opcodes_8086_MOV_segreg_reg_mem16 = %d\n", exception_opcodes_8086_MOV_segreg_reg_mem16);
                 snprintf(string, size, "%s %s %s", string_opcode, 
                     (instruction->opcode1.opcode_bits.b1 == 0) ? "byte" : "word",
                     string_rg
                 );
-            }else {
+            } else {
                 DEBUG_PRINT(DEBUG_LEVEL_INFO, "generando instruccion %s....\n", string_opcode);
-                snprintf(string, size, "%s %s %s, %s", string_opcode,
-                    (instruction->opcode1.opcode_bits_final.d == 0 && instruction->Mod_rm.fields.mod != 0b11) 
-                    ? (instruction->opcode1.opcode_bits.b1 == 0) ? "byte" : "word" : "",
-                    string_modrm, string_rg ); 
+                if(exception_opcodes_8086_MOV_segreg_reg_mem16) {
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "excepcion exception_opcodes_8086_MOV_segreg_reg_mem16 activada\n");
+                    snprintf(string, size, "%s %s %s, %s", string_opcode,
+                        (instruction->opcode1.opcode_bits_final.d == 0 && instruction->Mod_rm.fields.mod != 0b11) 
+                        ? (instruction->opcode1.opcode_bits.b1 == 0) ? "byte" : "word" : "",
+                        reg_seg[instruction->Mod_rm.fields.reg], string_rg ); 
+                } else {
+                    snprintf(string, size, "%s %s %s, %s", string_opcode,
+                        (instruction->opcode1.opcode_bits_final.d == 0 && instruction->Mod_rm.fields.mod != 0b11) 
+                        ? (instruction->opcode1.opcode_bits.b1 == 0) ? "byte" : "word" : "",
+                        string_modrm, string_rg ); 
+                }
             }
             if (temp != NULL) free(temp); // liberar la memoria reservada
             snprintf(string, size, string, instruction->displacement.ui16 ); 
