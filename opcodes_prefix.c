@@ -466,7 +466,7 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                 debug_malloc(char, temp, 20);
                 string_modrm = temp;
                 if (instruction->Mod_rm.fields.mod == 0 && instruction->Mod_rm.fields.R_M == 0b110) {
-                        snprintf(string_modrm, size, "%s:%0x%x", get_prefix_by_flags_prefix(instruction->flags_prefix), instruction->displacement.ui16);
+                        snprintf(string_modrm, size, "[%s:0x%x]", get_prefix_by_flags_prefix(instruction->flags_prefix), instruction->displacement.ui16);
                 } else {
                     const char *temp_modrm = get_mod_rm_8086(instruction);
                     if (string_modrm == temp_modrm) {
@@ -698,7 +698,7 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                     debug_malloc(char, string_rg, 20);
                     temp = string_rg;
                     if (instruction->Mod_rm.fields.mod == 0 && instruction->Mod_rm.fields.R_M == 0b110){
-                        snprintf(string_rg, size, "%s:0x%x", get_prefix_by_flags_prefix(instruction->flags_prefix), instruction->displacement.ui16);
+                        snprintf(string_rg, size, "[%s:0x%x]", get_prefix_by_flags_prefix(instruction->flags_prefix), instruction->displacement.ui16);
                     } else {
                         snprintf(string_rg, size, "%s:%s", get_prefix_by_flags_prefix(instruction->flags_prefix), temp_modrm); 
                     }
@@ -856,8 +856,8 @@ void get_string_Instruction_info_8086(Instruction_info *instruction, char* strin
                  */
                 case opcodes_8086_IN_al_dx: snprintf(string, size, "IN AL, DX"); return;
                 case opcodes_8086_IN_ax_dx: snprintf(string, size, "IN AX, DX"); return;
-                case opcodes_8086_OUT_al_dx: snprintf(string, size, "OUT AL, DX"); return;
-                case opcodes_8086_OUT_ax_dx: snprintf(string, size, "OUT AX, DX"); return;
+                case opcodes_8086_OUT_al_dx: snprintf(string, size, "OUT DX, AL"); return;
+                case opcodes_8086_OUT_ax_dx: snprintf(string, size, "OUT DX, AX"); return;
                 case opcodes_8086_MOVS_ptr8: snprintf(string, size, "MOVSB BYTE ES:[DI], BYTE [SI]"); return;
                 case opcodes_8086_MOVS_ptr16: snprintf(string, size, "MOVSW WORD ES:[DI], WORD [SI]"); return;
                 case opcodes_8086_CMPS_ptr8: snprintf(string, size, "CMPSB BYTE ES:[SI], BYTE [DI]"); return;

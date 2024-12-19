@@ -386,8 +386,10 @@ int main(){
         opcodes_8086_STD,                                                   // std
         opcodes_8086_INC_reg_mem8,          0x00,                           // inc  byte ptr [bx + si]
         opcodes_8086_INC_mem16,             0x00,                           // inc  word ptr [bx + si]
-        Prefix_CS, opcodes_8086_MOV_reg8, 0x16, 0x76, 0x14,                 // mov byte ptr cs:[0x1476], dl*/
-        opcodes_8086_MOV_segreg_reg_mem16, 0xD4,                                                         // MOV  SS, AH
+        Prefix_CS, opcodes_8086_MOV_reg8, 0x16, 0x76, 0x14,                 // mov byte ptr cs:[0x1476], dl
+        opcodes_8086_MOV_segreg_reg_mem16, 0xD4,                            // MOV  SS, AH*/
+        Prefix_CS, opcodes_8086_CMP_inmmed8, 0x3E, 0x74, 0x0F, 0x00,        // cmp byte ptr cs:[0x0f74], 0
+        opcodes_8086_JE, 0x03, 0xE9, 0xA7, 0x01,                            // jne boot
     };
 
     // -Os -s -ffunction-sections -Wl,--gc-sections -fno-asynchronous-unwind-tables -Wl,--strip-all
