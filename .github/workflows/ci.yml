@@ -45,14 +45,15 @@ jobs:
     - name: Build
       run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
 
-    - name: Build and run tests
+    - name: Run tests
       if: hashFiles('tests/test_opcodes.c') != ''
       run: |
-        if [ -f tests/test_opcodes.c ]; then
-          gcc -I. -Iinclude tests/test_opcodes.c src/opcodes_prefix.c -o tests/test_opcodes -lm
-          ./tests/test_opcodes
+        if [ -f build/test_opcodes ]; then
+          ./build/test_opcodes
+        elif [ -f build/Release/test_opcodes ]; then
+          ./build/Release/test_opcodes
         else
-          echo "No tests found, skipping"
+          echo "No test executable found, skipping"
         fi
 
     - name: Static analysis (cppcheck)
@@ -68,8 +69,12 @@ jobs:
       if: matrix.compiler.name == 'gcc' && hashFiles('tests/test_opcodes.c') != ''
       continue-on-error: true
       run: |
-        if [ -f tests/test_opcodes.c ]; then
-          gcc -I. -Iinclude -g -O0 tests/test_opcodes.c src/opcodes_prefix.c -o tests/test_opcodes_dbg -lm
+        if [ -f build/test_opcodes ]; then
           valgrind --leak-check=full --error-exitcode=1 \
-            ./tests/test_opcodes_dbg || echo "valgrind completed with warnings"
+            ./build/test_opcodes || echo "valgrind completed with warnings"
+        elif [ -f build/Release/test_opcodes ]; then
+          valgrind --leak-check=full --error-exitcode=1 \
+            ./build/Release/test_opcodes || echo "valgrind completed with warnings"
+        else
+          echo "No test executable found, skipping valgrind"
         fi
