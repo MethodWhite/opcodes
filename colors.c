@@ -202,7 +202,7 @@ void vprintf_color(const char *format, va_list args)
 
     const char *p = formatted_buffer;
     bool in_color_code = false;
-    char color_code[30];
+    char color_code[128];
     int color_code_index = 0;
 
     while (*p != '\0')

@@ -123,53 +123,59 @@ size_t get_number_instrutions(List_instrution *instrutions) {
     return list_instrution;
 }*/
 
-List_instrution * pop_List_instrution(List_instrution *list_instrution, size_t position){
-    /*
-     *
-     * pop_List_instrution(List_instrution *list_instrution, size_t position):
-     * Elimina el primer elemento de la lista enlazada si position es 0. en caso contrario se elimina el nodo
-     *  de esa posicion
-     * 
-     * Se recibe un list_instrution el cual es la lista enlazada, en caso de ser un puntero no valido o
-     *  NULL se retorna NULL.
-     * Se espera recibir position, el cual indica la posicion del bloque a eliminar. En caso de que sea 0
-     *  se eliminara el primer nodo. y se retornara el siguiente a este.
-     * En caso se que no se pueda eliminar el nodo especificado por posicion, por que la lista enlazada
-     *  no tiene un elemento "position", la funcion retornara NULL.
-     * 
-     */
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,
-        INIT_TYPE_FUNC_DBG(List_instrution *, pop_List_instrution)
-        TYPE_DATA_DBG(List_instrution *, "list_instrution = %p")
-        TYPE_DATA_DBG(size_t, "position = %zu")
-        END_TYPE_FUNC_DBG,
-        list_instrution, position);
-
+List_instrution *pop_List_instrution_v1(List_instrution *list_instrution, size_t position){
     if (list_instrution == NULL) return NULL;
     if (position == 0){
         List_instrution *next_block = list_instrution->next_list_instrution;
         free(list_instrution);
         return next_block;
     }
-    size_t number_instrutions = 1; // empezar en 1 como si del siguiente bloque se tratara, pues 
-    // eliminar el bloque 0 se hace en la parte superior.
-    List_instrution *last_block = list_instrution; // apuntar al ultimo bloque, para no perderle (A)
+    size_t number_instrutions = 1;
+    List_instrution *last_block = list_instrution;
     for (List_instrution *i = list_instrution; i->next_list_instrution != NULL; number_instrutions++) {
         if (number_instrutions == position) {
-            // se obtiene la direccion del siguiente bloque, del bloque a eliminar. En el caso de A -> B -> C,
-            // si se quiere eliminar B, desde la iteracion de A se obtiene la direccion de C para liberar el bloque B
-            // y permitir que el bloque apunte a C == A -> C
-            List_instrution *next_block =  i->next_list_instrution; // obtener el bloque C
-            free(i); // eliminar el bloque B
-            last_block->next_list_instrution = next_block; // hacer que A apunte a C
+            List_instrution *next_block = i->next_list_instrution;
+            free(i);
+            last_block->next_list_instrution = next_block;
             break;
         } else {
             last_block = i;
-            i = i->next_list_instrution; // hacer que A apunte al siguiente bloque si aun no se esta en la posicion a eliminar
+            i = i->next_list_instrution;
         }
     }
     if (number_instrutions != position) return NULL;
     return list_instrution;
+}
+
+List_instrution *pop_List_instrution_v2(List_instrution *list_instrution, size_t position){
+    if (list_instrution == NULL) return NULL;
+
+    List_instrution **indirect = &list_instrution;
+    while (*indirect != NULL) {
+        if (position == 0) {
+            List_instrution *to_remove = *indirect;
+            *indirect = to_remove->next_list_instrution;
+            free(to_remove);
+            return list_instrution;
+        }
+        position--;
+        indirect = &(*indirect)->next_list_instrution;
+    }
+    return NULL;
+}
+
+List_instrution *pop_List_instrution(List_instrution *list_instrution, size_t position){
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,
+        INIT_TYPE_FUNC_DBG(List_instrution *, pop_List_instrution)
+        TYPE_DATA_DBG(List_instrution *, "list_instrution = %p")
+        TYPE_DATA_DBG(size_t, "position = %zu")
+        END_TYPE_FUNC_DBG,
+        list_instrution, position);
+#ifdef POP_LIST_V2
+    return pop_List_instrution_v2(list_instrution, position);
+#else
+    return pop_List_instrution_v1(list_instrution, position);
+#endif
 }
 
 List_instrution *push_List_instrution(List_instrution *list_instrution) {
@@ -221,7 +227,10 @@ void print_List_instrution(List_instrution *list_instrution, encoder_x86 encoder
         END_TYPE_FUNC_DBG,
         list_instrution);
 
-    if (list_instrution == NULL) printf("finall list or invalid...");
+    if (list_instrution == NULL) {
+        printf("finall list or invalid...\n");
+        return;
+    }
 
     for (List_instrution *i = list_instrution; i != NULL; i = i->next_list_instrution) {
         printf("\n\nlist_instrution->next_list_instrution = %p\n", i->next_list_instrution);
@@ -312,7 +321,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
 
     List_instrution *list_instrution_resb = init_List_instrution();
     
-    for (size_t i = 0; i <= size_in_bytes; i++) {
+    for (size_t i = 0; i < size_in_bytes; i++) {
         
         uint8_t prefix_actual; // si es distinto de 0x00 hay prefijo
         uint8_t prefix_actual_n = 0; // cantidad de prefijos encontrados para una instruccion (maximo se soporta 4 en esta implementacion para cada  instruccion)
@@ -334,8 +343,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
             case Prefix_repne_repnez:  
             case Prefix_repe_rep_repz: 
                 prefix_actual = instrutions[i]; 
-                //actual_node->Instruction.instruction.prefix[prefix_actual_n] = prefix_actual; 
-                prefi[prefix_actual_n] = prefix_actual;
+                if (prefix_actual_n < 4) prefi[prefix_actual_n] = prefix_actual;
                 i++; // pasar al siguiente byte si se encontro un prefijo
                 prefix_actual_n++; // aumentar la cantidad de prefijos encontrados para la instruccion actual en 1. 
                 // if (prefix_actual > 0b11) // error
@@ -401,6 +409,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                  *
                  */
                 case 0b10: // tres byte de opcode
+                    if (i + 2 >= size_in_bytes) goto the_end_for;
                     #ifdef DEBUG_ENABLE
                     puts("3byte opcode");
                     #endif
@@ -410,7 +419,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                         actual_node->Instruction.instruction.opcode[0].opcode_byte.byte = instrutions[i+2];
                         actual_node->Instruction.instruction.opcode[1].opcode_byte.byte = instrutions[i+1];
                         actual_node->Instruction.instruction.opcode[2].opcode_byte.byte = instrutions[i];
-                        *((uint32_t*)(&actual_node->Instruction.instruction.prefix)) = *((uint32_t*)(prefi));
+                        memcpy(actual_node->Instruction.instruction.prefix, prefi, 4);
                         if (actual_node->Instruction.immediate_instrution) goto the_end_for; // si se trata de una instruccion inmediata no hay nada mas que analizar
                         //uint8_t a = get_mod_form_byte(&(actual_node->Instruction), instrutions + i);
                         //uint8_t b = get_rm_form_byte(&(actual_node->Instruction), instrutions + i);
@@ -418,6 +427,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                         goto the_end_for;
                     } break;
                 case 0b01: // dos bytes de opcode
+                    if (i + 1 >= size_in_bytes) break;
                     #ifdef DEBUG_ENABLE
                     printf(">>> (((%02x & %02x)[ = %02x] ==  %02x) && ",
                         my_instruccion[j].instruction.opcode[2].opcode_byte.byte, 
@@ -449,7 +459,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                         memcpy(&(actual_node->Instruction), &(my_instruccion[j]), sizeof(Instruction_info));
                         actual_node->Instruction.instruction.opcode[2].opcode_byte.byte = instrutions[i];
                         actual_node->Instruction.instruction.opcode[1].opcode_byte.byte = instrutions[i+1];
-                        *((uint32_t*)(&actual_node->Instruction.instruction.prefix)) = *((uint32_t*)(prefi));
+                        memcpy(actual_node->Instruction.instruction.prefix, prefi, 4);
                         
                         #ifdef DEBUG_ENABLE
                         printf("encontrada, byte1(%02x), byte2(%02x)\n", instrutions[i], instrutions[i+1]);
@@ -522,7 +532,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                                 if ((encoder_val == 0b0) 
                                     && (actual_node->Instruction.instruction.Mod_rm.R_M == 0b110)
                                 ) { // desplazamiento de 16bits
-                                    *((uint16_t*)&(actual_node->Instruction.instruction.displacement)) = *((uint16_t*)(instrutions + i + 1)); // obtener el desplazamiento de 16bits
+                                    memcpy(actual_node->Instruction.instruction.displacement, instrutions + i + 1, 2);
                                     #ifdef DEBUG_ENABLE
                                     printf("[16] %04x\n", *((uint16_t*)&(actual_node->Instruction.instruction.displacement)));
                                     printf("[16.8]{0} %02x\n", actual_node->Instruction.instruction.displacement[0]);
@@ -531,7 +541,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                                     i+=2; // avanzar 2bytes en el array de instrucciones maquina
                                 } else if (encoder_val == 0b1) {  // desplazamiento de 32bits o SIB
                                     if (actual_node->Instruction.instruction.Mod_rm.R_M == 0b101) { // desplazamiento de 32bits
-                                        *((uint32_t*)&(actual_node->Instruction.instruction.displacement)) = *((uint32_t*)(instrutions + i + 1)); // obtener el desplazamiento de 32bits
+                                        memcpy(actual_node->Instruction.instruction.displacement, instrutions + i + 1, 4);
                                         #ifdef DEBUG_ENABLE
                                         printf("[32] %08x\n", *((uint32_t*)&(actual_node->Instruction.instruction.displacement)));
                                         printf("[32.8]{0} %02x\n", actual_node->Instruction.instruction.displacement[0]);
@@ -572,7 +582,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                                 break;
                             case 0b10: // obtener un desplazamiento de 16bits o 32bits
                                 if (encoder_val == 0b0) { // desplazamiento de 16bits
-                                    *((uint16_t*)&(actual_node->Instruction.instruction.displacement)) = *((uint16_t*)(instrutions + i + 1)); // obtener el desplazamiento de 16bits
+                                    memcpy(actual_node->Instruction.instruction.displacement, instrutions + i + 1, 2);
                                     #ifdef DEBUG_ENABLE
                                     printf("[16] %04x\n", *((uint16_t*)&(actual_node->Instruction.instruction.displacement)));
                                     printf("[16.8]{0} %02x\n", actual_node->Instruction.instruction.displacement[0]);
@@ -590,7 +600,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                                         printf("[base]{3} %02x\n", actual_node->Instruction.instruction.SIB.base);
                                         #endif
                                     }
-                                    *((uint32_t*)&(actual_node->Instruction.instruction.displacement)) = *((uint32_t*)(instrutions + i + 1)); // obtener el desplazamiento de 32bits
+                                    memcpy(actual_node->Instruction.instruction.displacement, instrutions + i + 1, 4);
                                     #ifdef DEBUG_ENABLE
                                     printf("[32] %08x\n", *((uint32_t*)&(actual_node->Instruction.instruction.displacement)));
                                     printf("[32.8]{0} %02x\n", actual_node->Instruction.instruction.displacement[0]);
@@ -630,7 +640,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                                         printf("Inmediato de 8bits en 16bits %02x\n", *((uint8_t*)&(actual_node->Instruction.instruction.immediate)));
                                         #endif
                                     } else {
-                                        *((uint16_t*)&(actual_node->Instruction.instruction.immediate)) = *((uint16_t*)(instrutions + i + 1));
+                                        memcpy(actual_node->Instruction.instruction.immediate, instrutions + i + 1, 2);
                                         i+=2;
                                         #ifdef DEBUG_ENABLE
                                         printf("Inmediato de 16bits %04x\n", *((uint16_t*)&(actual_node->Instruction.instruction.immediate)));
@@ -639,7 +649,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                                 } else {   // para 32bits
                                     if (actual_node->Instruction.position_tttn == 0b11 && actual_node->Instruction.mask_tttn != 0x0){
                                         // solo para variantes de instrucciones de tipo no salto (JCC)
-                                        *((uint32_t*)&(actual_node->Instruction.instruction.immediate)) = *((uint32_t*)(instrutions + i + 1));
+                                        memcpy(actual_node->Instruction.instruction.immediate, instrutions + i + 1, 4);
                                         i+=4;
                                         #ifdef DEBUG_ENABLE
                                         printf("Inmediato de 32bits para inmediato de registro AL, AX, EAX: %08x\n", *((uint32_t*)&(actual_node->Instruction.instruction.immediate)));
@@ -658,7 +668,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                                             printf("Inmediato de 8bits sin SIB %02x\n", *((uint8_t*)&(actual_node->Instruction.instruction.immediate)));
                                             #endif
                                         } else {
-                                            *((uint32_t*)&(actual_node->Instruction.instruction.immediate)) = *((uint32_t*)(instrutions + i + 1));
+                                            memcpy(actual_node->Instruction.instruction.immediate, instrutions + i + 1, 4);
                                             i+=4;
                                             #ifdef DEBUG_ENABLE
                                             printf("Inmediato de 32bits sin SIB %08x\n", *((uint32_t*)&(actual_node->Instruction.instruction.immediate)));
@@ -667,7 +677,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                                     } else { // con SIB 32bits
                                         // inmediato de 32bits si es SIB
                                         // para instrucciones SIB con inmediatos, solo se puede usar valores de 8 y 32bits
-                                        *((uint32_t*)&(actual_node->Instruction.instruction.immediate)) = *((uint32_t*)(instrutions + i + 1));
+                                        memcpy(actual_node->Instruction.instruction.immediate, instrutions + i + 1, 4);
                                         i+=4;
                                         #ifdef DEBUG_ENABLE
                                         printf("Inmediato de 32bits para SIB %08x\n", *((uint32_t*)&(actual_node->Instruction.instruction.immediate)));
@@ -733,7 +743,7 @@ List_instrution *format_instruccion(uint8_t *instrutions, size_t size_in_bytes, 
                         actual_node = push_List_instrution(list_instrution_resb);// añadir nodo 
                         memcpy(&(actual_node->Instruction), &(my_instruccion[j]), sizeof(Instruction_info));
                         actual_node->Instruction.instruction.opcode[2].opcode_byte.byte = instrutions[i];
-                        *((uint32_t*)(&actual_node->Instruction.instruction.prefix)) = *((uint32_t*)(prefi));
+                        memcpy(actual_node->Instruction.instruction.prefix, prefi, 4);
                         #ifdef DEBUG_ENABLE
                         DEBUG_PRINT(DEBUG_LEVEL_INFO, "#{FG:reset}instruccion actual -> #{FG:lpurple}%s#{FG:reset} -> ", get_string_instruction_by_id(actual_node->Instruction.string));
                         printf_color("#{BG:%d;%d;%d} %s#{FG:reset} (color: %u %u %u)\n", (unsigned char)Avalue1, (unsigned char)Avalue2, (unsigned char)Avalue3,  get_string_instruction_by_id(actual_node->Instruction.string), (unsigned char)Avalue1, (unsigned char)Avalue2, (unsigned char)Avalue3);

@@ -59,7 +59,6 @@ String_list_link* Init_String(char *string, size_t size_string) {
      * El puntero devuelto por la estructura es NULL.
      *  
      */
-    if (size_string == -1) return NULL;
     String_list_link *ptr = (String_list_link *)malloc(sizeof(String_list_link));
     if (ptr == NULL) return ptr; // en caso de que malloc falle se retorna
 
@@ -151,29 +150,12 @@ String_list_link* free_String_list_link(String_list_link* list) {
 }
 
 static inline String_list_link *push_String(String_list_link *list, char* string, size_t size_string) {
-    /*
-     *  
-     * push_String(String_list_link *list, char* string, size_t size_string):
-     * Esta funcion añade un nodo a la lista enlazada.
-     * 
-     * Se espera recibir un list que sea valido, en caso de ser NULL o un puntero no valido, se retorna NULL.
-     * Se espera recibir un string para crear el nuevo nodo.
-     * Se espera recibir un size_string con el tamaño del string, en caso de ser 0 se calcula el tamaño.
-     * 
-     * Se espera retornar una lista enlazada con el nuevo nodo creado.
-     *  
-     */
-    
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,
-        INIT_TYPE_FUNC_DBG(String_list_link*, push_String)
-            TYPE_DATA_DBG(String_list_link *, "list = %p")
-        END_TYPE_FUNC_DBG,
-        list);
-    
-    if (list == NULL) return NULL; // la lista enlazada recibida es un puntero no valido o es nulo
-
-    list->next_string = Init_String(string, size_string);
-    return list->next_string;
+    if (list == NULL) return NULL;
+    String_list_link **indirect = &list;
+    while (*indirect != NULL) indirect = &(*indirect)->next_string;
+    *indirect = Init_String(string, size_string);
+    if (*indirect == NULL) return NULL;
+    return *indirect;
 }
 Action_Native_String *Start_Action_Native_String(Action_Native_String *string_action_struct) {
     
@@ -242,7 +224,7 @@ String_list_link* get_string_instruction(Instruction_info *my_instruccion_, enco
      */
     char *string = get_string_instruction_by_id(my_instruccion_->string); // string de la instruccion ya descodificada
     String_list_link *ptr_org = Init_String(string, CALC_SIZE_STRING_FLAG); // el tamaño del string se calcula dentro de la funcion
-    if (ptr_org == NULL) goto exit_get_string_instruction; // error ocurrio
+    if (ptr_org == NULL) return NULL; // error ocurrio
 
     // si no tiene campo mod o rm se terna el string solo con la instruccion
     if ((my_instruccion_->position_rm == 0b11) || (my_instruccion_->position_mod == 0b11) || (my_instruccion_->position_reg == 0b11)) return ptr_org;
@@ -251,8 +233,12 @@ String_list_link* get_string_instruction(Instruction_info *my_instruccion_, enco
     bool is_free = false;
     Action_Native_String *dest  = (Action_Native_String *)malloc(sizeof(Action_Native_String)),
                          *fuent = (Action_Native_String *)malloc(sizeof(Action_Native_String)),
-                         *auxi  = (Action_Native_String *)malloc(sizeof(Action_Native_String)); // se usa para el intercambio de variables
-    dest->flags  = FLAG_FREE_ANS; // indicar que la estructura a de liberarse al llamar a Start_Action_Native_String, ademas de poner todas las demas flags a 0
+                         *auxi  = (Action_Native_String *)malloc(sizeof(Action_Native_String));
+    if (!dest || !fuent || !auxi) {
+        free(dest); free(fuent); free(auxi);
+        return ptr_org;
+    }
+    dest->flags  = FLAG_FREE_ANS;
     fuent->flags = FLAG_FREE_ANS; // indicar que la estructura a de liberarse al llamar a Start_Action_Native_String, ademas de poner todas las demas flags a 0
     auxi->flags  = FLAG_FREE_ANS; // indicar que la estructura a de liberarse al llamar a Start_Action_Native_String, ademas de poner todas las demas flags a 0
 
@@ -300,10 +286,10 @@ String_list_link* get_string_instruction(Instruction_info *my_instruccion_, enco
             dest->string = get_string_mod_0(encoder_val, my_instruccion_);
             is_free = false; // si se marca en true, se a de marcar en la lista enlazada que el string del desplazamiento a de liberarse
             if ((encoder_val == 0b0) && (my_instruccion_->instruction.Mod_rm.R_M == 0b110)) { // desplazamiento de 16bits
-                val = *((uint16_t*)&(my_instruccion_->instruction.displacement));
+                memcpy(&val, my_instruccion_->instruction.displacement, sizeof(uint16_t));
             } else if (encoder_val == 0b1 && encoder_val == ENCODER_IN_32bits) {  // desplazamiento de 32bits o SIB
                 if (my_instruccion_->instruction.Mod_rm.R_M == 0b101) { // desplazamiento de 32bits
-                    val = *((uint32_t*)&(my_instruccion_->instruction.displacement));
+                    memcpy(&val, my_instruccion_->instruction.displacement, sizeof(uint32_t));
                 } else if (my_instruccion_->instruction.Mod_rm.R_M == 0b100) { // SIB
                     dest->string = get_build_SIB_format(my_instruccion_);
                     dest->flags |= FLAG_FREE_Sll; // indicar que se a de liberar el espacio
@@ -468,9 +454,9 @@ String_list_link* get_string_instruction(Instruction_info *my_instruccion_, enco
                 is_free = true; // si se marca en true, se a de marcar en la lista enlazada que el string del desplazamiento a de liberarse
                                 // indicar que el desplazamiento debera liberarse al liberar la lista enlazada
                 if (encoder_val == 0b0)  // desplazamiento de 16bits
-                    val = *((uint16_t*)&(my_instruccion_->instruction.displacement));
+                    memcpy(&val, my_instruccion_->instruction.displacement, sizeof(uint16_t));
                 else if (encoder_val == 0b1)  // desplazamiento de 32bits
-                    val = *((uint32_t*)&(my_instruccion_->instruction.displacement));
+                    memcpy(&val, my_instruccion_->instruction.displacement, sizeof(uint32_t));
                 size_len_register = (snprintf(NULL, 0, dest->string,  val) + 1) * sizeof(char);
                 auxi->string = (char *)malloc(size_len_register); // almacenar el buffer para guardar la instruccion formateada
                 sprintf(auxi->string, dest->string, val); // formatear la instruiccion
@@ -594,7 +580,7 @@ static inline size_t get_size_to_String(String_list_link *list) {
         END_TYPE_FUNC_DBG,
         list);
     
-    if (list == NULL) return -1; 
+    if (list == NULL) return SIZE_MAX; 
 
     size_t size = 0;
     for (String_list_link *i = list; i != NULL; i = i->next_string) size += i->size_string;
@@ -619,7 +605,7 @@ static inline size_t get_number_nodes_String_list_link(String_list_link *list) {
         END_TYPE_FUNC_DBG,
         list);
     
-    if (list == NULL) return -1; 
+    if (list == NULL) return SIZE_MAX; 
 
     size_t size = 0;
     for (String_list_link *i = list; i != NULL; i = i->next_string) size++;

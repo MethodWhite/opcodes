@@ -35,24 +35,13 @@
 
 #include <stdio.h>
 
+/*
+ * WARNING: Reading function memory as data is undefined behavior (UB) on modern systems
+ * with W^X enforcement. This function is a stub. Use platform-specific APIs (dladdr on Linux,
+ * SymFromAddr on Windows) to determine function sizes at runtime.
+ */
 size_t get_size_func(unsigned char* func_ptr) {
-    for (size_t n_bytes_func = 0; func_ptr != NULL; func_ptr++)
-    {
-        if ( 
-            (
-                *(func_ptr + 0) == (unsigned char)0xc3 &&
-                *(func_ptr + 1) == (unsigned char)0xc3 &&
-                *(func_ptr + 2) == (unsigned char)0xc3 &&
-                *(func_ptr + 3) == (unsigned char)0xc3 &&
-                *(func_ptr + 4) == (unsigned char)0xc3 &&
-                *(func_ptr + 5) == (unsigned char)0xc3 &&
-                *(func_ptr + 6) == (unsigned char)0xc3 
-            ) || n_bytes_func > 0x75D410 // poner un tamaño limite
-        ) return n_bytes_func;
-        else {
-            n_bytes_func++;
-        }
-    }
+    (void)func_ptr;
     return 0;
 }   
 

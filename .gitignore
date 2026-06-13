@@ -1,4 +1,30 @@
-*.exe
-*.zip
+# Build artifacts
+build/
 *.o
-salida.txt
+*.exe
+*.dll
+*.so
+*.a
+*.lib
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile.cmake
+CTestTestfile.cmake
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+*.log
+*.tmp

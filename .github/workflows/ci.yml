@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        compiler:
+          - { name: gcc, cc: gcc, cxx: g++ }
+          - { name: clang, cc: clang, cxx: clang++ }
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential gcc clang cppcheck valgrind
+
+    - name: Cache build
+      uses: actions/cache@v4
+      with:
+        path: build
+        key: ${{ matrix.compiler.name }}-build-${{ hashFiles('CMakeLists.txt', '*.c', '*.h') }}
+        restore-keys: |
+          ${{ matrix.compiler.name }}-build-
+
+    - name: Configure CMake
+      env:
+        CC: ${{ matrix.compiler.cc }}
+        CXX: ${{ matrix.compiler.cxx }}
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+    - name: Build
+      run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+    - name: Build and run tests
+      run: |
+        cmake -B build-test -S . -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+        cmake --build build-test --config ${{ env.BUILD_TYPE }} --parallel
+        ctest --test-dir build-test --output-on-failure -C ${{ env.BUILD_TYPE }}
+
+    - name: Static analysis (cppcheck)
+      if: matrix.compiler.name == 'gcc'
+      run: |
+        cppcheck --enable=all --suppress=missingIncludeSystem \
+          --error-exitcode=1 \
+          --std=c11 \
+          --language=c \
+          code.c
+
+    - name: Run valgrind memcheck
+      if: matrix.compiler.name == 'gcc'
+      run: |
+        gcc -I. -g -O0 tests/test_opcodes.c -o tests/test_opcodes_dbg
+        valgrind --leak-check=full --error-exitcode=1 \
+          ./tests/test_opcodes_dbg
