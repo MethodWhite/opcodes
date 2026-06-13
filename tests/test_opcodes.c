@@ -8,9 +8,6 @@
 #include "instrutions_format.h"
 #include "stringx.h"
 
-/* opcodes_prefix.c is NOT auto-included from its header, so include explicitly */
-#include "opcodes_prefix.c"
-
 static int tests_passed = 0;
 static int tests_failed = 0;
 
